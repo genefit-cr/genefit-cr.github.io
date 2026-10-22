@@ -3,7 +3,7 @@
      si no hay señal, se usa la copia guardada.
    - Librerías, letras y fotos de ejercicios se guardan la primera vez.
    - Los datos de Firebase NO pasan por aquí: Firebase tiene su propio modo sin señal. */
-const VERSION = 'gf-v1';
+const VERSION = 'gf-v2';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png',
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js',
@@ -53,4 +53,10 @@ self.addEventListener('fetch', e => {
       return res;
     })));
   }
+});
+
+// Al tocar el aviso de "Descanso terminado", volver a la app.
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(l => l.length ? l[0].focus() : self.clients.openWindow('./')));
 });

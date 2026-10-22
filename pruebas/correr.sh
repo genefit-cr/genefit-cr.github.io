@@ -13,6 +13,7 @@ import sys; p = sys.argv[1]; s = open(p, encoding='utf-8').read()
 a = "S.auth=firebase.auth();S.db=firebase.firestore();"
 assert a in s, 'no encontré la conexión a Firebase en index.html'
 s = s.replace(a, a + "S.auth.useEmulator('http://127.0.0.1:9099');S.db.settings({experimentalForceLongPolling:true,experimentalAutoDetectLongPolling:false,merge:true});S.db.useEmulator('127.0.0.1',8080);")
+s = s.replace("</head>", "<style>.firebase-emulator-warning{display:none!important}</style></head>")
 s = s.replace("connect-src 'self'", "connect-src 'self' http://127.0.0.1:9099 http://127.0.0.1:8080")
 open(p, 'w', encoding='utf-8').write(s)
 PY
