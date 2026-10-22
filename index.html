@@ -1191,7 +1191,11 @@ function abrirFecha(cid){const a=accesoDe(cid),v=new Date(a?.pagoHasta||Date.now
 async function guardarFecha(cid){const v=$('#fph')?.value;if(!v)return toast('Elige una fecha');const[y,m,d]=v.split('-').map(Number);const ph=new Date(y,m-1,d,23,59,59,999).getTime();
   if(await escribir(()=>S.db.doc('acceso/'+cid).set({pagoHasta:ph,alias:aliasDe(cid)},{merge:true}),`Acceso hasta el ${fechaLarga(ph)}`))cerrarHoja()}
 async function suspender(cid,on,b){if(on&&b&&!b.dataset.ok){b.dataset.ok=1;b.textContent='Toca otra vez para suspender';return}
-  await escribir(()=>S.db.doc('acceso/'+cid).set(on?{bloqueado:true,alias:aliasDe(cid)}:{bloqueado:false,eliminado:false,alias:aliasDe(cid)},{merge:true}),on?'Acceso suspendido':'Acceso reactivado')}
+  // Al reactivar a alguien eliminado con la mensualidad ya vencida, se quita la fecha vieja:
+  // así puede volver a entrar y aparece en tu lista como «Sin pago» para cobrarle.
+  const a=accesoDe(cid),limpiar=!on&&a?.eliminado&&a.pagoHasta&&a.pagoHasta<Date.now();
+  const datos=on?{bloqueado:true,alias:aliasDe(cid)}:{bloqueado:false,eliminado:false,alias:aliasDe(cid),...(limpiar?{pagoHasta:firebase.firestore.FieldValue.delete()}:{})};
+  await escribir(()=>S.db.doc('acceso/'+cid).set(datos,{merge:true}),on?'Acceso suspendido':limpiar?'Reactivado. Regístrale el pago cuando te pague.':'Acceso reactivado')}
 async function eliminarCliente(cid,b){if(!b.dataset.ok){b.dataset.ok=1;b.textContent='Toca otra vez para eliminar (no se puede deshacer)';return}
   b.disabled=true;b.textContent='Eliminando…';const alias=aliasDe(cid);
   const ok=await escribir(async()=>{
