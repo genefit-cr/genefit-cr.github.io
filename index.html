@@ -6,7 +6,13 @@
 <meta name="theme-color" content="#0E0F12">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://raw.githubusercontent.com https://cdn.jsdelivr.net; connect-src 'self' https://*.googleapis.com https://raw.githubusercontent.com https://cdn.jsdelivr.net https://www.gstatic.com https://fonts.googleapis.com https://fonts.gstatic.com; frame-src https://genefit-1a52a.firebaseapp.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta name="referrer" content="no-referrer">
 <title>Genefit</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Genefit">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800;900&family=Inter:wght@400;500;600;700&display=swap">
 <style>
@@ -338,7 +344,7 @@ const guardarSes=()=>ls.set('hierro2-sesion',S.ses);
 const BASE=()=>'clientes/'+S.me;
 const PRIV=()=>'privado/'+S.me;
 const docs=s=>s.docs.map(d=>({id:d.id,...d.data()}));
-function sub(grupo,ref,cb,err){try{subs[grupo].push(ref.onSnapshot(s=>{cb(s);programar()},e=>{console.warn('db',e);if(err){err(e);programar()}}))}catch(e){console.warn(e)}}
+function sub(grupo,ref,cb,err,opc={}){try{subs[grupo].push(ref.onSnapshot(opc,s=>{cb(s);programar()},e=>{console.warn('db',e);if(err){err(e);programar()}}))}catch(e){console.warn(e)}}
 function cortar(grupo){subs[grupo].forEach(u=>{try{u()}catch(e){}});subs[grupo]=[]}
 async function escribir(fn,ok){
   try{await fn();if(ok)toast(ok);return true}
@@ -366,11 +372,13 @@ function init(){
     if(!u){S.me=null;S.listo=true;S.vista=null;render();return}
     S.me=u.uid;S.meName=u.displayName||'';S.listo=false;S.coachId=undefined;render();
     sub('comun',S.db.doc('config/coach'),s=>{
+      // Esperar a que el servidor confirme: las reglas solo dejan ver los datos del coach cuando ya está guardado.
+      if(s.metadata.hasPendingWrites)return;
       const antes=S.esOwner,primera=S.coachId===undefined;
       S.coachId=s.exists?s.data().uid:null;S.coachNombre=s.exists?(s.data().nombre||''):'';S.sinCoach=!s.exists;
       S.esOwner=S.coachId===S.me;
       if(primera||antes!==S.esOwner){S.modo=S.esOwner?ls.get('gf-modo','coach'):'cliente';arrancarModo()}
-      S.listo=true});
+      S.listo=true},null,{includeMetadataChanges:true});
   });
 }
 function arrancarModo(){cortar('modo');cortar('det');cortar('chat');S.det=null;S.chat=null;
@@ -443,7 +451,15 @@ function pintarNav(show){$('#nav').hidden=!show;if(!show)return;
   $('#navIn').innerHTML=t.map(([k,l,i])=>`<button onclick="irA('${k}')" ${S.tab===k?'aria-current="page"':''}>${i}${l}${punto(k)?'<span class="dot" aria-label="nuevo"></span>':''}</button>`).join('')}
 function irA(t){S.tab=t;S.vista=null;render();scrollTo(0,0)}
 function vSinConfig(){return `<div class="stack" style="padding-top:40px"><h1>Falta conectar Firebase</h1><p class="small">Esta página todavía no tiene los datos de tu proyecto de Firebase. Pégalos en <b>FIREBASE_CONFIG</b> dentro de index.html.</p></div>`}
-function salir(){if(S.ses&&!confirmSalir){confirmSalir=true;return toast('Tienes un entreno en curso. Toca «Salir» otra vez para salir igual.')}confirmSalir=false;S.authModo='entrar';S.auth.signOut();S.clientes=[];S.hist=[];S.recs=[];S.asig=[];S.rut=[];S.med=[];S.fotos=[];S.msgs=[];S.perfil=undefined;S.acceso=undefined;S.accesos=[];S.esOwner=false}
+/* Al salir se borra todo lo guardado en este teléfono (copia de la base de datos y entreno en curso),
+   para que la siguiente persona que use el aparato no vea nada del anterior. */
+async function salir(){if(S.ses&&!confirmSalir){confirmSalir=true;return toast('Tienes un entreno en curso. Si sales se descarta. Toca «Salir» otra vez para salir igual.')}confirmSalir=false;
+  $('#view').innerHTML='<div class="cargando">Cerrando sesión…</div>';$('#nav').hidden=true;
+  cortar('comun');cortar('modo');cortar('det');cortar('chat');
+  try{await S.auth.signOut()}catch(e){}
+  try{await S.db.terminate();await S.db.clearPersistence()}catch(e){console.warn(e)}
+  ['hierro2-sesion','gf-visto','gf-modo','gf-soycliente'].forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
+  location.reload()}
 let confirmSalir=false;
 function vLogin(){const r=S.authModo==='crear',o=S.authModo==='olvido';
   return `<form class="stack auth" style="padding-top:48px" onsubmit="enviarAuth(event)">
@@ -451,7 +467,7 @@ function vLogin(){const r=S.authModo==='crear',o=S.authModo==='olvido';
    <h1 style="font-size:44px;line-height:.98">${o?'Recupera<br>tu clave':r?'Crea tu<br>cuenta':'Tu plan.<br>Tu coach.<br><span style="color:var(--accent)">Hoy.</span>'}</h1>
    ${r?`<div class="field"><label class="lbl" for="anom">Tu nombre</label><input class="input" id="anom" required maxlength="40" autocomplete="name" placeholder="Como te llama tu coach"></div>`:''}
    <div class="field"><label class="lbl" for="amail">Correo</label><input class="input" id="amail" type="email" required autocomplete="email" inputmode="email" placeholder="tucorreo@gmail.com"></div>
-   ${o?'':`<div class="field"><label class="lbl" for="aclave">Clave</label><input class="input" id="aclave" type="password" required minlength="6" autocomplete="${r?'new-password':'current-password'}" placeholder="Mínimo 6 caracteres"></div>`}
+   ${o?'':`<div class="field"><label class="lbl" for="aclave">Clave</label><input class="input" id="aclave" type="password" required minlength="${r?8:6}" autocomplete="${r?'new-password':'current-password'}" placeholder="${r?'Mínimo 8 caracteres':'Tu clave'}"></div>`}
    <div class="err" id="aerr" role="alert"></div>
    <button class="btn primary go" id="abtn">${o?'Enviar correo':r?'Crear cuenta':'Entrar'}</button>
    ${o?`<button type="button" class="link" onclick="S.authModo='entrar';render()">Volver a entrar</button>`:
@@ -460,7 +476,7 @@ function vLogin(){const r=S.authModo==='crear',o=S.authModo==='olvido';
 const ERR_AUTH={'auth/invalid-credential':'Correo o clave incorrectos.','auth/wrong-password':'Clave incorrecta.','auth/user-not-found':'No hay una cuenta con ese correo. Toca «Soy nuevo».','auth/email-already-in-use':'Ya existe una cuenta con ese correo. Toca «Ya tengo cuenta».','auth/weak-password':'La clave debe tener al menos 6 caracteres.','auth/invalid-email':'Ese correo no es válido.','auth/too-many-requests':'Demasiados intentos. Espera un rato e inténtalo de nuevo.','auth/network-request-failed':'Sin conexión. Revisa tu internet.','auth/operation-not-allowed':'Falta activar «Correo electrónico/contraseña» en Firebase Authentication.'};
 async function enviarAuth(ev){ev.preventDefault();const m=$('#amail').value.trim(),c=$('#aclave')?.value,b=$('#abtn'),er=$('#aerr');er.textContent='';b.disabled=true;
   try{if(S.authModo==='olvido'){await S.auth.sendPasswordResetEmail(m);toast('Te enviamos un correo para cambiar la clave');S.authModo='entrar';render();return}
-    if(S.authModo==='crear'){const nom=$('#anom').value.trim();const r=await S.auth.createUserWithEmailAndPassword(m,c);await r.user.updateProfile({displayName:nom});S.meName=nom}
+    if(S.authModo==='crear'){const nom=$('#anom').value.trim();if(c.length<8||/^(\d+|(.)\2+)$/.test(c)){er.textContent='Usa una clave de al menos 8 caracteres que no sea solo números ni una letra repetida.';b.disabled=false;return}const r=await S.auth.createUserWithEmailAndPassword(m,c);await r.user.updateProfile({displayName:nom});S.meName=nom}
     else await S.auth.signInWithEmailAndPassword(m,c)}
   catch(e){er.textContent=ERR_AUTH[e.code]||('No se pudo: '+(e.code||e.message));b.disabled=false}}
 function vConfigCoach(){return `<div class="stack" style="padding-top:28px"><h1>Configura Genefit</h1>
@@ -491,6 +507,7 @@ function vHoy(){
   const hoy=new Date(),L=lunes(Date.now()),hechos=new Set(S.hist.map(h=>new Date(h.fecha).toDateString()));
   const nom=S.perfil?.alias||S.meName||'';
   let h=`<div class="stack" style="padding-top:12px"><div><span class="small">${esc(hoy.toLocaleDateString('es-CR',{weekday:'long',day:'numeric',month:'long'}))}</span><h1>Hola${nom?', '+esc(nom.split(' ')[0]):''}</h1></div>`;
+  h+=bannerInstalar();
   h+=`<div class="semana" aria-label="Esta semana">${LETRAS.map((l,i)=>{const t=new Date(L+i*DIA);const c=hechos.has(t.toDateString())?'hecho':(i===hoyDow()?'hoy':'');return `<div class="dia ${c}"><span class="tiny">${l}</span><b>${t.getDate()}</b></div>`}).join('')}</div>`;
   if(S.ses){const all=S.ses.ejercicios.flatMap(e=>e.sets);h+=`<div class="card line" style="border-color:var(--ok-line);background:var(--ok-bg)"><span class="eyebrow ac">En curso</span><h2>${esc(S.ses.rutina)}</h2><span class="small" style="color:var(--ok-fg)">${all.filter(x=>x.ok).length} de ${all.length} series · empezaste ${hace(S.ses.inicio)}</span><button class="btn primary go" onclick="abrirSesion()">${IC.play} Continuar</button></div>`}
   const r=rutinaDeHoy();
@@ -722,7 +739,7 @@ function detalleLinea(c){if(!c.ultimo)return c.alta?`Se unió ${hace(c.alta)}`:'
 function vClientes(){const C=S.clientes;pedirNombres(C.map(c=>c.id));
   const activos=C.filter(c=>c.ultimo&&dias(c.ultimo)<=2).length,atras=C.filter(c=>!c.ultimo||dias(c.ultimo)>=7).length;
   let lista=[...C].sort((a,b)=>(b.ultimo||0)-(a.ultimo||0));if(S.filtro==='atencion')lista=lista.filter(c=>!c.ultimo||dias(c.ultimo)>=7);
-  let h=`<div class="stack" style="padding-top:12px"><div><span class="small">Panel del entrenador</span><h1>Mis clientes</h1></div>
+  let h=`<div class="stack" style="padding-top:12px"><div><span class="small">Panel del entrenador</span><h1>Mis clientes</h1></div>${bannerInstalar()}
    <section class="card line" style="background:var(--ok-bg);border-color:var(--ok-line)"><b>Invita a tus clientes</b>
     <span class="small" style="color:var(--ok-fg)">Mándales el enlace de Genefit. Entran, tocan «Soy nuevo», crean su cuenta con correo y clave, y aparecen aquí.</span>
     <div class="row" style="flex-wrap:wrap;gap:8px"><button class="btn primary sm" onclick="compartirLink()">Compartir enlace</button><button class="btn ghost sm" onclick="copiarLink()">Copiar enlace</button></div></section>
@@ -864,6 +881,18 @@ function abrirChat(cid){cortar('chat');S.chat={cid,msgs:[]};S.chat.volver=S.vist
 function cerrarChat(){const v=S.chat?.volver;cortar('chat');S.chat=null;S.vista=v==='cliente'&&S.det?'cliente':null;render()}
 function vChat(){const c=S.clientes.find(x=>x.id===S.chat.cid)||{id:S.chat.cid},n=nombreCliente(c);
   return `<div class="stack" style="padding-top:18px"><div class="row"><button class="iconbtn" onclick="cerrarChat()" aria-label="Volver">${IC.back}</button>${avatar(n)}<h1 class="grow" style="font-size:22px">${esc(n)}</h1></div>${hiloHTML(S.chat.msgs)}${cajaMsg(S.chat.cid)}</div>`}
+
+/* ================= App instalable ================= */
+let pedirInstalar=null;
+const esIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+const instalada=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();pedirInstalar=e;programar()});
+addEventListener('appinstalled',()=>{pedirInstalar=null;toast('¡Genefit quedó instalada!');programar()});
+function bannerInstalar(){if(instalada()||ls.get('gf-noinstalar',false)||(!pedirInstalar&&!esIOS))return'';
+  return `<section class="card line" style="flex-direction:row;align-items:center;gap:12px"><img src="icons/icon-192.png" alt="" width="44" height="44" style="border-radius:12px;flex:none"><div class="grow"><b>Instala Genefit</b><div class="small">${pedirInstalar?'Ábrela como app desde tu pantalla de inicio, también sin señal.':'Toca <b>Compartir</b> y luego <b>«Agregar a pantalla de inicio»</b>.'}</div></div>
+   ${pedirInstalar?`<button class="btn sm primary" onclick="instalar()">Instalar</button>`:''}<button class="iconbtn" onclick="ls.set('gf-noinstalar',true);render()" aria-label="No mostrar más">${IC.x}</button></section>`}
+async function instalar(){if(!pedirInstalar)return;pedirInstalar.prompt();try{await pedirInstalar.userChoice}catch(e){}pedirInstalar=null;render()}
+if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(e=>console.warn('sw',e)));
 
 init();
 </script>

@@ -1,0 +1,5 @@
+node_modules/
+capturas/
+firebase.json
+*.log
+firestore.rules
