@@ -60,7 +60,7 @@ service cloud.firestore {
     // ---------- Ficha de cada cliente (lo que su coach puede ver) ----------
     match /clientes/{uid} {
       function camposCliente() {
-        return ['alias', 'alta', 'compartir', 'v', 'ultimo', 'ultTitulo', 'ultMin', 'ultPRs', 'ultVol', 'ultMsg', 'sexo'];
+        return ['alias', 'alta', 'compartir', 'v', 'ultimo', 'ultTitulo', 'ultMin', 'ultPRs', 'ultVol', 'ultMsg', 'sexo', 'tend'];
       }
       function sexoValido() { return !('sexo' in datos()) || datos().sexo in ['m', 'f']; }
       // El último mensaje solo lo puede poner quien lo escribió (si no cambia, no se revisa).

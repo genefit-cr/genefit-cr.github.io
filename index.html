@@ -469,7 +469,7 @@ function render(){
   else if(S.modo==='cliente'&&restringido()){html=vBloqueado();nav=false}
   else if(S.vista==='sesion'&&S.ses){html=vSesion();nav=false;top=false}
   else if(S.vista==='editor'&&S.draft){html=vEditor();nav=false;top=false}
-  else if(S.vista==='ej'&&S.ejSel&&S.modo==='cliente'){html=vEjercicio();nav=false;top=false}
+  else if(S.vista==='ej'&&S.ejSel){html=vEjercicio();nav=false;top=false}
   else if(S.vista==='cliente'&&S.det){html=vClienteDet();nav=false;top=false}
   else if(S.vista==='chat'&&S.chat){html=vChat();nav=false;top=false}
   else if(S.modo==='cliente'&&S.perfil===undefined){html='<div class="cargando">Cargando tu plan…</div>';nav=false}
@@ -695,6 +695,7 @@ async function guardarSesion(){
     await S.db.doc(BASE()).update({ultimo:f,ultTitulo:titulo,ultMin:min,ultPRs:prs.length,ultVol:Math.round(vol)});
   });
   if(!ok){const b=$('#btnGuardar');if(b)b.disabled=false;return}
+  S.db.doc(BASE()).update({tend:tendencias([{fecha:f,prs,detalle},...S.hist.filter(h=>h.id!==id)])}).catch(e=>console.warn('tend',e));
   cerrarHoja();S.ses=null;guardarSes();try{wake?.release()}catch(e){}wake=null;S.vista=null;S.tab='hoy';render();scrollTo(0,0);
   toast(prs.length?`¡Guardado! ${prs.length} récord${prs.length>1?'s':''} nuevo${prs.length>1?'s':''}: ${prs.join(', ')}`:'¡Entrenamiento guardado! Tu coach ya lo puede ver.')}
 
@@ -730,9 +731,10 @@ function cerrarHoja(){const s=$('#sheet');s.hidden=true;s.innerHTML='';S.pick=nu
 
 /* ================= Editor de rutinas (cliente y coach) ================= */
 function nuevaRutina(dest){S.edit={dest,id:null};S.draft={nombre:'',ejercicios:[]};S.vista='editor';render();scrollTo(0,0)}
-function editarRutina(id,dest='rutina'){const src=(dest==='plantilla'?S.plantillas:S.rut).find(x=>x.id===id);if(!src)return;S.edit={dest,id};S.draft=JSON.parse(JSON.stringify({nombre:src.nombre,ejercicios:src.ejercicios||[],orden:src.orden||0}));S.vista='editor';render();scrollTo(0,0)}
+function editarRutina(id,dest='rutina'){const src=(dest==='plantilla'?S.plantillas:dest==='asignada'?S.det?.asig||[]:S.rut).find(x=>x.id===id);if(!src)return;S.edit={dest,id,cid:dest==='asignada'?S.det.id:null};S.draft=JSON.parse(JSON.stringify({nombre:src.nombre,ejercicios:src.ejercicios||[],orden:src.orden||0}));S.vista='editor';render();scrollTo(0,0)}
 function vEditor(){const r=S.draft,nuevo=!S.edit.id;
-  return `<div class="stack" style="padding-top:18px"><div class="row"><button class="iconbtn" onclick="salirEditor()" aria-label="Volver">${IC.back}</button><h1 class="grow" style="font-size:24px">${nuevo?'Nueva rutina':'Editar rutina'}</h1></div>
+  return `<div class="stack" style="padding-top:18px"><div class="row"><button class="iconbtn" onclick="salirEditor()" aria-label="Volver">${IC.back}</button><h1 class="grow" style="font-size:24px">${nuevo?'Nueva rutina':S.edit.dest==='asignada'?'Ajustar para '+esc(nombreDe(S.edit.cid)):'Editar rutina'}</h1></div>
+   ${S.edit.dest==='asignada'?'<div class="notice">Estos cambios son solo para este cliente. Tu plantilla no cambia.</div>':''}
    <div class="field"><label class="lbl" for="rn">Nombre</label><input class="input" id="rn" value="${esc(r.nombre)}" placeholder="Ej: Torso A" maxlength="60" oninput="S.draft.nombre=this.value"></div>
    ${r.ejercicios.length?r.ejercicios.map((e,i)=>`<section class="card" style="gap:10px"><div class="row">${mini(e.nombre,'mini s44')}<button class="exname grow" style="font-size:16px" onclick="abrirFicha(${J(e.nombre)})">${esc(e.nombre)}</button>
       <button class="iconbtn" onclick="mover(${i})" ${i===0?'disabled':''} aria-label="Subir">${IC.arriba}</button><button class="iconbtn" onclick="S.draft.ejercicios.splice(${i},1);render()" aria-label="Quitar ${esc(e.nombre)}">${IC.x}</button></div>
@@ -742,11 +744,12 @@ function vEditor(){const r=S.draft,nuevo=!S.edit.id;
    <button class="btn primary go" onclick="guardarRutina()">Guardar rutina</button>
    ${nuevo?'':`<button class="btn danger block" onclick="borrarRutina(this)">Eliminar rutina</button>`}</div>`}
 function mover(i){const a=S.draft.ejercicios;if(i<1)return;[a[i-1],a[i]]=[a[i],a[i-1]];render()}
-function salirEditor(){S.vista=null;S.draft=null;render()}
-function colRut(){return S.edit.dest==='plantilla'?'plantillas':PRIV()+'/rutinas'}
+function salirEditor(){S.vista=S.edit?.dest==='asignada'&&S.det?'cliente':null;S.draft=null;render()}
+function colRut(){return S.edit.dest==='plantilla'?'plantillas':S.edit.dest==='asignada'?`clientes/${S.edit.cid}/asignadas`:PRIV()+'/rutinas'}
 async function guardarRutina(){const d=S.draft;if(!d.nombre.trim())return toast('Ponle un nombre a la rutina');if(!d.ejercicios.length)return toast('Agrega al menos un ejercicio');
   const id=S.edit.id||'r'+uid();const body={nombre:d.nombre.trim(),ejercicios:d.ejercicios.map((e,i)=>({nombre:e.nombre,series:Math.max(1,+e.series||1),reps:+e.reps||0,kg:+e.kg||0,desc:+e.desc||90,...(e.sig&&i<d.ejercicios.length-1?{sig:true}:{})})),orden:d.orden||Date.now()};
-  if(await escribir(()=>S.db.collection(colRut()).doc(id).set(body),S.edit.dest==='plantilla'?'Rutina guardada. Ahora tócale «Asignar a clientes».':'Rutina guardada'))salirEditor()}
+  const asg=S.edit.dest==='asignada';if(asg)delete body.orden;
+  if(await escribir(()=>S.db.collection(colRut()).doc(id).set(body,{merge:asg}),S.edit.dest==='plantilla'?'Rutina guardada. Ahora tócale «Asignar a clientes».':asg?'Rutina ajustada para '+nombreDe(S.edit.cid):'Rutina guardada'))salirEditor()}
 async function borrarRutina(b){if(!b.dataset.ok){b.dataset.ok=1;b.textContent='Toca otra vez para eliminar';return}
   if(await escribir(()=>S.db.collection(colRut()).doc(S.edit.id).delete(),'Rutina eliminada'))salirEditor()}
 
@@ -889,11 +892,13 @@ function progResumen(){const H=S.hist,w=porSemana(H),est=w.at(-1),ant=w.at(-2),r
 function progEjercicios(){const L=ejerciciosHechos(S.hist);
   if(!L.length)return `<div class="empty">Cuando guardes tu primer entrenamiento, aquí ves cómo progresa cada ejercicio.</div>`;
   return `<span class="small">Toca un ejercicio para ver su gráfica.</span><div class="stack s8">${L.map(e=>`<button class="pick card" style="padding:10px 12px;flex-direction:row;background:var(--card)" onclick="abrirEj(${J(e.nombre)})">${mini(e.nombre,'mini s44')}<span class="grow" style="min-width:0"><b style="display:block">${esc(e.nombre)}</b><span class="small">${e.n} sesi${e.n===1?'ón':'ones'} · última ${hace(e.ult)}</span></span><span style="text-align:right" class="num"><b>${fmt(e.rm)} kg</b><span class="tiny" style="display:block">1RM est.</span></span></button>`).join('')}</div>`}
-function abrirEj(n){S.ejSel=n;S.vista='ej';render();scrollTo(0,0)}
-function vEjercicio(){const n=S.ejSel,P=sesionesDe(S.hist,n),k=S.ejVar||'rm';
+function abrirEj(n,fuente='yo'){S.ejSel=n;S.ejFuente=fuente;S.vista='ej';render();scrollTo(0,0)}
+const histEj=()=>S.ejFuente==='det'&&S.det?S.det.hist:S.hist;
+function cerrarEj(){S.vista=S.ejFuente==='det'&&S.det?'cliente':null;render();scrollTo(0,0)}
+function vEjercicio(){const n=S.ejSel,P=sesionesDe(histEj(),n),k=S.ejVar||'rm';
   const V={rm:['1RM estimado','1RM estimado'],max:['Peso máximo','Peso máximo'],vol:['Volumen','Volumen']};
   const best=P.length?Math.max(...P.map(p=>p.rm)):0,maxKg=P.length?Math.max(...P.map(p=>p.max)):0;
-  let h=`<div class="stack" style="padding-top:18px"><div class="row"><button class="iconbtn" onclick="S.vista=null;render()" aria-label="Volver">${IC.back}</button>${mini(n,'mini s44')}<h1 class="grow" style="font-size:22px">${esc(n)}</h1></div>
+  let h=`<div class="stack" style="padding-top:18px"><div class="row"><button class="iconbtn" onclick="cerrarEj()" aria-label="Volver">${IC.back}</button>${mini(n,'mini s44')}<h1 class="grow" style="font-size:22px">${esc(n)}</h1></div>
    <div class="grid3"><div class="tile"><span class="tiny">1RM estimado</span><span class="big" style="font-size:22px">${fmt(best)}</span><span class="tiny">kg</span></div><div class="tile"><span class="tiny">Peso máximo</span><span class="big" style="font-size:22px">${fmt(maxKg)}</span><span class="tiny">kg</span></div><div class="tile"><span class="tiny">Sesiones</span><span class="big" style="font-size:22px">${P.length}</span></div></div>
    <section class="card"><div class="chips">${Object.entries(V).map(([x,[l]])=>`<button class="chip sm" aria-pressed="${k===x}" onclick="S.ejVar='${x}';render()">${l}</button>`).join('')}</div>
    ${graficoLinea('gej',P.map(p=>({t:p.fecha,v:k==='vol'?p.vol:p[k],txt:`${fecha(p.fecha)}: ${k==='vol'?kg(p.vol):fmt(p[k])} kg`})),V[k][1])}
@@ -905,59 +910,97 @@ function vEjercicio(){const n=S.ejSel,P=sesionesDe(S.hist,n),k=S.ejVar||'rm';
 /* ================= Chat (cliente y coach) ================= */
 function marcarVisto(cid){const v=ls.get('gf-visto',{});v[cid]=Date.now();ls.set('gf-visto',v)}
 function hiloHTML(lista){return lista.length?`<div class="msgs" id="msgs">${lista.map(m=>`<div class="msg ${m.de===S.me?'yo':'otro'}">${esc(m.texto)}<small>${hace(m.fecha)}</small></div>`).join('')}</div>`:'<div class="empty">Todavía no hay mensajes. Escribe el primero.</div>'}
-function cajaMsg(cid){return `<form class="row" style="align-items:flex-end;gap:8px" onsubmit="enviarMsg(event,${J(cid)})"><label for="msgIn" class="grow" style="display:flex"><span hidden>Mensaje</span><textarea class="input" id="msgIn" rows="1" maxlength="500" placeholder="Escribe un mensaje" style="min-height:48px"></textarea></label><button class="btn primary">Enviar</button></form>`}
+const BORR={}; // borradores del chat: no se pierden si llega un mensaje mientras escribes
+function cajaMsg(cid){return `<form class="row" style="align-items:flex-end;gap:8px" onsubmit="enviarMsg(event,${J(cid)})"><label for="msgIn" class="grow" style="display:flex"><span hidden>Mensaje</span><textarea class="input" id="msgIn" rows="1" maxlength="500" placeholder="Escribe un mensaje" style="min-height:48px" oninput="BORR[${esc(JSON.stringify(cid))}]=this.value">${esc(BORR[cid]||'')}</textarea></label><button class="btn primary">Enviar</button></form>`}
 async function enviarMsg(ev,cid){ev.preventDefault();const i=$('#msgIn'),t=i.value.trim();if(!t)return;
-  const m={de:S.me,texto:t.slice(0,500),fecha:Date.now()};i.value='';
+  const m={de:S.me,texto:t.slice(0,500),fecha:Date.now()};i.value='';delete BORR[cid];
   const ok=await escribir(async()=>{await S.db.collection('clientes/'+cid+'/mensajes').doc('m'+uid()).set(m);await S.db.doc('clientes/'+cid).update({ultMsg:m})});
-  if(!ok)i.value=t;else{marcarVisto(cid);i.blur()}}
+  if(!ok){i.value=t;BORR[cid]=t}else{marcarVisto(cid);i.blur()}}
 function vCoach(){
   marcarVisto(S.me);const nom=S.coachNombre||'Tu coach';
   return `<div class="stack" style="padding-top:12px"><div class="row">${avatar(nom,'avatar lg')}<div class="grow"><span class="small">Tu coach</span><h1 style="font-size:26px">${esc(nom)}</h1></div></div>
    ${S.asig.length?`<section class="card"><b>Rutinas que te asignó</b>${S.asig.map(a=>`<div class="list-row"><div class="grow"><b>${esc(a.nombre)}</b><div class="small">${(a.ejercicios||[]).length} ejercicios${a.dias?.length?' · '+a.dias.map(d=>NOMDIA[d]).join(', '):''}</div></div>${S.ses?'':`<button class="btn sm primary" onclick="iniciar('asig',${J(a.id)})">Empezar</button>`}</div>`).join('')}</section>`:''}
    <section class="card"><b>Mensajes</b>${hiloHTML(S.msgs)}${cajaMsg(S.me)}</section></div>`}
 
+/* Resumen que la app del cliente calcula al guardar un entreno, para que el coach vea tendencias
+   sin descargar todo el historial: entrenos de la semana, récords del mes y ejercicios estancados. */
+function tendencias(H){const L=lunes(Date.now()),hace30=Date.now()-30*DIA,estanc=[],sube=[];
+  for(const e of ejerciciosHechos(H)){const P=sesionesDe(H,e.nombre);if(P.length<4||e.ult<hace30)continue;
+    const antes=Math.max(...P.slice(0,-3).map(p=>p.rm)),ult3=Math.max(...P.slice(-3).map(p=>p.rm));
+    if(ult3<=antes)estanc.push(e.nombre);else sube.push(e.nombre)}
+  return{sem:{ini:L,n:H.filter(h=>h.fecha>=L).length},ses30:H.filter(h=>h.fecha>=hace30).length,prs30:H.filter(h=>h.fecha>=hace30).reduce((a,h)=>a+(h.prs?.length||0),0),estanc:estanc.slice(0,5),sube:sube.slice(0,5),act:Date.now()}}
+
 /* ================= COACH: Clientes ================= */
 function estado(c){if(!c.ultimo)return['Nuevo','nada'];const d=dias(c.ultimo);
   if(d<=2&&c.ultPRs)return['Récord','pr'];if(d<=2)return['Entrenó','ok'];if(d>=7)return[`${d} días`,'alerta'];return[`${d} días`,'nada']}
 function detalleLinea(c){if(!c.ultimo)return c.alta?`Se unió ${hace(c.alta)}`:'Aún no entrena';return `${c.ultTitulo||'Entreno'} · ${hace(c.ultimo)} · ${c.ultMin||0} min${c.ultPRs?` · ${c.ultPRs} récord${c.ultPRs>1?'s':''}`:''}`}
+const semanaDe=c=>c.tend?.sem?.ini===lunes(Date.now())?c.tend.sem.n:0;
+const estancado=c=>!!c.tend?.estanc?.length&&c.ultimo&&dias(c.ultimo)<30;
+const progresa=c=>(c.tend?.prs30||0)>0&&c.ultimo&&dias(c.ultimo)<30;
+const atencion=c=>!c.ultimo||dias(c.ultimo)>=7||estancado(c)||(c.id!==S.me&&pago(accesoDe(c.id)).k==='venc');
+function lineaTend(c){const t=c.tend;if(!t||!c.ultimo)return'';const p=[`${semanaDe(c)} esta semana`];
+  if(t.prs30)p.push(`${t.prs30} récord${t.prs30>1?'s':''} en 30 días`);
+  return `<span class="small" style="display:block">${p.join(' · ')}${estancado(c)?` · <span style="color:var(--warn)">estancado en ${esc(t.estanc[0])}${t.estanc.length>1?' y '+(t.estanc.length-1)+' más':''}</span>`:''}</span>`}
 function vClientes(){const C=S.clientes;pedirNombres(C.map(c=>c.id));
-  const activos=C.filter(c=>c.ultimo&&dias(c.ultimo)<=2).length,atras=C.filter(c=>!c.ultimo||dias(c.ultimo)>=7).length;
-  let lista=[...C].sort((a,b)=>(b.ultimo||0)-(a.ultimo||0));if(S.filtro==='atencion')lista=lista.filter(c=>!c.ultimo||dias(c.ultimo)>=7);
+  const activos=C.filter(c=>c.ultimo&&dias(c.ultimo)<=2).length,nAt=C.filter(atencion).length,nPr=C.filter(progresa).length;
+  const F={todos:[()=>true,'Todos',C.length],atencion:[atencion,'Necesitan atención',nAt],progresan:[progresa,'Progresan',nPr]};
+  const f=F[S.filtro]||F.todos;let lista=[...C].filter(f[0]).sort((a,b)=>(b.ultimo||0)-(a.ultimo||0));
   let h=`<div class="stack" style="padding-top:12px"><div><span class="small">Panel del entrenador</span><h1>Mis clientes</h1></div>${bannerInstalar()}
    <section class="card line" style="background:var(--ok-bg);border-color:var(--ok-line)"><b>Invita a tus clientes</b>
     <span class="small" style="color:var(--ok-fg)">Mándales el enlace de Genefit. Entran, tocan «Soy nuevo», crean su cuenta con correo y clave, y aparecen aquí.</span>
     <div class="row" style="flex-wrap:wrap;gap:8px"><button class="btn primary sm" onclick="compartirLink()">Compartir enlace</button><button class="btn ghost sm" onclick="copiarLink()">Copiar enlace</button></div></section>
-   <div class="grid3"><div class="tile"><span class="big">${C.length}</span><span class="tiny">Clientes</span></div><div class="tile"><span class="big" style="color:var(--accent)">${activos}</span><span class="tiny">Entrenaron hoy o ayer</span></div><div class="tile"><span class="big" style="color:var(--warn)">${atras}</span><span class="tiny">Sin entrenar 7+ días</span></div></div>
-   <div class="chips" role="group" aria-label="Filtro de clientes"><button class="chip" aria-pressed="${S.filtro==='todos'}" onclick="S.filtro='todos';render()">Todos</button><button class="chip" aria-pressed="${S.filtro==='atencion'}" onclick="S.filtro='atencion';render()">Necesitan atención</button></div>`;
-  h+=lista.length?`<div class="stack s8">${lista.map(c=>{const [t,k]=estado(c),n=nombreCliente(c);return `<button class="card" style="padding:12px;border:0;text-align:left;color:var(--fg);flex-direction:row;align-items:center" onclick="abrirCliente(${J(c.id)})">${avatar(n)}<span class="grow"><b style="display:block">${esc(n)}${c.id===S.me?' (tú)':''}</b><span class="small">${esc(detalleLinea(c))}</span></span><span class="pills"><span class="pill ${k}">${t}</span>${pillPago(c.id)}</span></button>`}).join('')}</div>`
-    :`<div class="empty">${C.length?'Nadie necesita atención. ¡Todos van al día!':'Aún no tienes clientes. Cuando un cliente abra Genefit por primera vez, aparece aquí.'}</div>`;
+   <div class="grid3"><div class="tile"><span class="big">${C.length}</span><span class="tiny">Clientes</span></div><div class="tile"><span class="big" style="color:var(--accent)">${activos}</span><span class="tiny">Entrenaron hoy o ayer</span></div><div class="tile"><span class="big" style="color:var(--warn)">${nAt}</span><span class="tiny">Necesitan atención</span></div></div>
+   <div class="chips" role="group" aria-label="Filtro de clientes">${Object.entries(F).map(([k,[,l,n]])=>`<button class="chip" aria-pressed="${(S.filtro||'todos')===k}" onclick="S.filtro='${k}';render()">${l} · ${n}</button>`).join('')}</div>`;
+  h+=lista.length?`<div class="stack s8">${lista.map(c=>{const [t,k]=estado(c),n=nombreCliente(c);return `<button class="card" style="padding:12px;border:0;text-align:left;color:var(--fg);flex-direction:row;align-items:center" onclick="abrirCliente(${J(c.id)})">${avatar(n)}<span class="grow" style="min-width:0"><b style="display:block">${esc(n)}${c.id===S.me?' (tú)':''}</b><span class="small" style="display:block">${esc(detalleLinea(c))}</span>${lineaTend(c)}</span><span class="pills"><span class="pill ${k}">${t}</span>${estancado(c)?'<span class="pill alerta">Estancado</span>':''}${pillPago(c.id)}</span></button>`}).join('')}</div>`
+    :`<div class="empty">${C.length?(S.filtro==='progresan'?'Nadie tiene récords en los últimos 30 días todavía.':'Nadie necesita atención. ¡Todos van al día!'):'Aún no tienes clientes. Cuando un cliente abra Genefit por primera vez, aparece aquí.'}</div>`;
   return h+`</div>${S.plantillas.length&&C.length?`<button class="btn primary fab" onclick="elegirPlantilla()">${IC.mas} Asignar rutina</button>`:''}`}
 function compartirLink(){if(navigator.share)navigator.share({title:'Genefit',text:'Entra a Genefit para ver tu rutina:',url:APP_URL}).catch(()=>{});else copiarLink()}
 function copiarLink(){const ok=()=>toast('Enlace copiado');try{navigator.clipboard.writeText(APP_URL).then(ok,()=>toast(APP_URL))}catch(e){toast(APP_URL)}}
 
 /* Detalle de un cliente */
-function abrirCliente(id){cortar('det');S.det={id,hist:[],recs:[],asig:[],med:[],fotos:[]};const B='clientes/'+id;
-  sub('det',S.db.collection(B+'/historial').orderBy('fecha','desc').limit(20),s=>S.det&&(S.det.hist=docs(s)));
+function abrirCliente(id){cortar('det');S.det={id,hist:[],recs:[],asig:[],med:[],fotos:[]};S.detTab='resumen';const B='clientes/'+id;
+  sub('det',S.db.collection(B+'/historial').orderBy('fecha','desc').limit(120),s=>S.det&&(S.det.hist=docs(s)));
   sub('det',S.db.collection(B+'/records'),s=>S.det&&(S.det.recs=docs(s)));
   sub('det',S.db.collection(B+'/asignadas'),s=>S.det&&(S.det.asig=docs(s)));
   sub('det',S.db.collection(B+'/medidas'),s=>S.det&&(S.det.med=docs(s).sort((a,b)=>a.fecha-b.fecha)));
   sub('det',S.db.collection(B+'/fotos'),s=>S.det&&(S.det.fotos=docs(s).sort((a,b)=>a.fecha-b.fecha)));
   S.vista='cliente';render();scrollTo(0,0)}
 function cerrarCliente(){cortar('det');S.det=null;S.vista=null;render()}
-function vClienteDet(){const d=S.det,c=S.clientes.find(x=>x.id===d.id)||{id:d.id},n=nombreCliente(c),[t,k]=estado(c);
+const DTABS=[['resumen','Resumen'],['progreso','Progreso'],['cuerpo','Cuerpo']];
+function vClienteDet(){const d=S.det,c=S.clientes.find(x=>x.id===d.id)||{id:d.id},n=nombreCliente(c),[t,k]=estado(c),tab=S.detTab||'resumen';
   const sem=d.hist.filter(h=>h.fecha>=lunes(Date.now())).length;
   let h=`<div class="stack" style="padding-top:18px"><div class="row"><button class="iconbtn" onclick="cerrarCliente()" aria-label="Volver">${IC.back}</button>${avatar(n)}<div class="grow"><h1 style="font-size:24px">${esc(n)}</h1><span class="small">${esc(detalleLinea(c))}</span></div><span class="pill ${k}">${t}</span></div>
-   <div class="grid3"><div class="tile"><span class="big">${sem}</span><span class="tiny">Esta semana</span></div><div class="tile"><span class="big">${d.hist.length}${d.hist.length===20?'+':''}</span><span class="tiny">Entrenos</span></div><div class="tile"><span class="big">${d.recs.length}</span><span class="tiny">Récords</span></div></div>
-   <div class="grid2"><button class="btn primary" onclick="elegirPlantilla(${J(d.id)})">${IC.mas} Asignar rutina</button><button class="btn ghost" onclick="abrirChat(${J(d.id)})">Enviar mensaje</button></div>`;
-  h+=`<section class="card"><b>Rutinas asignadas</b>${d.asig.length?d.asig.map(a=>`<div class="list-row"><div class="grow"><b>${esc(a.nombre)}</b><div class="small">${(a.ejercicios||[]).length} ejercicios · ${a.dias?.length?a.dias.map(x=>NOMDIA[x]).join(', '):'en rotación'}${a.nota?' · «'+esc(a.nota)+'»':''}</div></div><button class="iconbtn" onclick="desasignar(${J(d.id)},${J(a.id)},this)" aria-label="Quitar ${esc(a.nombre)}">${IC.x}</button></div>`).join(''):'<span class="small">Sin rutinas asignadas. Asígnale una para que la vea en «Hoy».</span>'}</section>`;
-  h+=`<section class="card"><b>Últimos entrenamientos</b>${d.hist.length?d.hist.slice(0,10).map(x=>`<div class="list-row" style="align-items:flex-start"><div class="grow"><b>${esc(x.titulo)}</b>${x.prs?.length?' <span class="pill pr">'+x.prs.length+' récord'+(x.prs.length>1?'s':'')+'</span>':''}<div class="small">${new Date(x.fecha).toLocaleDateString('es-CR',{weekday:'short',day:'numeric',month:'short'})} · ${x.min} min · ${x.series} series · ${kg(x.volumen)} kg</div>
-     <div class="small" style="margin-top:4px">${(x.ejercicios||[]).map(e=>`${e.series}× ${esc(e.nombre)} (${esc(e.mejor)})`).join('<br>')}</div>${x.nota?`<div class="small" style="margin-top:4px;color:var(--fg)">«${esc(x.nota)}»</div>`:''}</div></div>`).join(''):'<span class="small">Todavía no registra entrenamientos.</span>'}</section>`;
+   <div class="grid3"><div class="tile"><span class="big">${sem}</span><span class="tiny">Esta semana</span></div><div class="tile"><span class="big">${d.hist.length}${d.hist.length===120?'+':''}</span><span class="tiny">Entrenos</span></div><div class="tile"><span class="big">${d.recs.length}</span><span class="tiny">Récords</span></div></div>
+   <div class="grid2"><button class="btn primary" onclick="elegirPlantilla(${J(d.id)})">${IC.mas} Asignar rutina</button><button class="btn ghost" onclick="abrirChat(${J(d.id)})">Enviar mensaje</button></div>
+   <div class="tabs" role="tablist" style="grid-template-columns:repeat(3,minmax(0,1fr))">${DTABS.map(([x,l])=>`<button class="chip" role="tab" aria-selected="${tab===x}" aria-pressed="${tab===x}" onclick="S.detTab='${x}';render()">${l}</button>`).join('')}</div>`;
+  h+=({resumen:detResumen,progreso:detProgreso,cuerpo:detCuerpo}[tab]||detResumen)(d,c,n);
+  return h+'</div>'}
+function detResumen(d,c,n){
+  let h=`<section class="card"><b>Rutinas asignadas</b>${d.asig.length?d.asig.map(a=>`<div class="list-row"><div class="grow"><b>${esc(a.nombre)}</b><div class="small">${(a.ejercicios||[]).length} ejercicios · ${a.dias?.length?a.dias.map(x=>NOMDIA[x]).join(', '):'en rotación'}${a.nota?' · «'+esc(a.nota)+'»':''}</div></div><button class="btn sm ghost" onclick="editarRutina(${J(a.id)},'asignada')">Ajustar</button><button class="iconbtn" onclick="desasignar(${J(d.id)},${J(a.id)},this)" aria-label="Quitar ${esc(a.nombre)}">${IC.x}</button></div>`).join('')+'<span class="small">«Ajustar» cambia la rutina solo para este cliente; tu plantilla queda igual.</span>':'<span class="small">Sin rutinas asignadas. Asígnale una para que la vea en «Hoy».</span>'}</section>`;
+  h+=`<section class="card"><b>Últimos entrenamientos</b>${d.hist.length?d.hist.slice(0,10).map(x=>`<details class="hrow"><summary><div class="grow"><b>${esc(x.titulo)}</b>${x.prs?.length?' <span class="pill pr">'+x.prs.length+' récord'+(x.prs.length>1?'s':'')+'</span>':''}<div class="small">${new Date(x.fecha).toLocaleDateString('es-CR',{weekday:'short',day:'numeric',month:'short'})} · ${x.min} min · ${x.series} series · ${kg(x.volumen)} kg</div>${x.nota?`<div class="small" style="color:var(--fg)">«${esc(x.nota)}»</div>`:''}</div></summary>
+     <div class="small" style="line-height:1.6">${(x.detalle||[]).map(e=>`<b style="color:var(--fg)">${esc(e.nombre)}</b> ${esc(setsTxt(e.sets))}`).join('<br>')}</div>
+     <button class="btn sm ghost" style="margin:8px 0 10px" onclick="comentarEntreno(${J(d.id)},${J(x.titulo)},${x.fecha})">${IC.chat} Comentar este entreno</button></details>`).join(''):'<span class="small">Todavía no registra entrenamientos.</span>'}</section>`;
   const R=[...d.recs].sort((a,b)=>b.fecha-a.fecha).slice(0,8);
   if(R.length)h+=`<section class="card"><b>Récords</b>${R.map(r=>`<div class="list-row"><span class="grow">${esc(r.nombre)}</span><span class="num"><b>${fmt(r.kg)} kg</b> × ${r.reps} <span class="small">· ${hace(r.fecha)}</span></span></div>`).join('')}</section>`;
-  h+=`<section class="card"><b>Medidas y fotos</b>${c.compartir?(lineaPeso(d.med)||(d.med.length?'':'<span class="small">Aún no registra medidas.</span>'))+(d.fotos.length?`<div class="thumbs">${[...d.fotos].reverse().slice(0,9).map(f=>`<div class="thumb"><img src="${esc(f.img)}" alt="Foto de ${esc(f.pose||'')} del ${fecha(f.fecha)}" loading="lazy"><span class="cap">${esc(f.pose||'')} · ${fecha(f.fecha)}</span></div>`).join('')}</div>`:''):'<span class="small">Tu cliente no comparte sus medidas ni fotos. Puede activarlo en su sección Progreso.</span>'}</section>`;
   if(d.id!==S.me){h+=cardPago(d.id,n);
     h+=`<section class="card"><b>Eliminar cliente</b><span class="small">Borra sus entrenos, récords, rutinas y mensajes, y le cierra el acceso a Genefit. Lo puedes reactivar después desde «Pagos», pero sus datos borrados no vuelven.</span>${S.sinReglasAcceso?'<span class="small" style="color:var(--warn)">Para eliminar clientes falta pegar las reglas nuevas de Firestore en la consola de Firebase.</span>':`<button class="btn danger block" onclick="eliminarCliente(${J(d.id)},this)">Eliminar a ${esc(n)}</button>`}</section>`}
-  return h+'</div>'}
+  return h}
+function detProgreso(d,c){const H=d.hist,w=porSemana(H),k=S.semVar||'entrenos',L=ejerciciosHechos(H),T=tendencias(H);
+  const U={entrenos:['Entrenos',v=>v+(v===1?' entreno':' entrenos')],volumen:['Volumen',v=>kg(v)+' kg'],series:['Series',v=>v+' series']};
+  if(!H.length)return `<div class="empty">Cuando entrene, aquí ves su progreso.</div>`;
+  let h=`<section class="card"><b>Tendencia</b><div class="grid2"><div class="tile" style="background:var(--raise)"><span class="tiny">Entrenos en 30 días</span><span class="big">${T.ses30}</span></div><div class="tile" style="background:var(--raise)"><span class="tiny">Récords en 30 días</span><span class="big" style="color:var(--gold)">${T.prs30}</span></div></div>
+   ${T.sube.length?`<span class="small"><b style="color:var(--accent)">Subiendo:</b> ${T.sube.map(esc).join(', ')}</span>`:''}
+   ${T.estanc.length?`<span class="small"><b style="color:var(--warn)">Estancado</b> (sin mejorar en sus últimas 3 sesiones): ${T.estanc.map(esc).join(', ')}</span>`:''}
+   ${!T.sube.length&&!T.estanc.length?'<span class="small">Con 4 sesiones o más de un ejercicio se ve si está subiendo o estancado.</span>':''}</section>`;
+  h+=`<section class="card"><div class="row between"><b>Por semana</b><span class="small">últimas 12</span></div>
+   <div class="chips">${Object.entries(U).map(([x,[l]])=>`<button class="chip sm" aria-pressed="${k===x}" onclick="S.semVar='${x}';render()">${l}</button>`).join('')}</div>
+   ${graficoBarras('csem',w.map(s=>({v:s[k],lab:fecha(s.ini),txt:`Semana del ${fecha(s.ini)}: ${U[k][1](s[k])}`})),U[k][0]+' por semana')}</section>`;
+  h+=`<section class="card"><div class="row between"><b>Series por músculo</b><span class="small">últimos 30 días</span></div>${musculos(H)}</section>`;
+  h+=`<section class="card"><b>Ejercicios</b><span class="small">Toca uno para ver su gráfica.</span>${L.map(e=>`<button class="pick" onclick="abrirEj(${J(e.nombre)},'det')">${mini(e.nombre,'mini s44')}<span class="grow" style="min-width:0"><b style="display:block">${esc(e.nombre)}</b><span class="small">${e.n} sesi${e.n===1?'ón':'ones'} · última ${hace(e.ult)}</span></span><span class="num" style="text-align:right"><b>${fmt(e.rm)} kg</b><span class="tiny" style="display:block">1RM est.</span></span></button>`).join('')}</section>`;
+  return h}
+function detCuerpo(d,c){
+  return `<section class="card"><b>Medidas y fotos</b>${c.compartir?(lineaPeso(d.med)||(d.med.length?'':'<span class="small">Aún no registra medidas.</span>'))+(d.fotos.length?`<div class="thumbs">${[...d.fotos].reverse().slice(0,9).map(f=>`<div class="thumb"><img src="${esc(f.img)}" alt="Foto de ${esc(f.pose||'')} del ${fecha(f.fecha)}" loading="lazy"><span class="cap">${esc(f.pose||'')} · ${fecha(f.fecha)}</span></div>`).join('')}</div>`:''):'<span class="small">Tu cliente no comparte sus medidas ni fotos. Puede activarlo en su sección Progreso.</span>'}</section>`}
+function comentarEntreno(cid,titulo,f){BORR[cid]=`Sobre tu entreno «${titulo}» del ${fecha(f)}: `;abrirChat(cid);setTimeout(()=>{const i=$('#msgIn');if(!i)return;i.focus();i.setSelectionRange(i.value.length,i.value.length)},50)}
 async function desasignar(cid,aid,b){if(!b.dataset.ok){b.dataset.ok=1;b.style.color='var(--danger)';toast('Toca otra vez la ✕ para quitar la rutina');return}
   await escribir(()=>S.db.doc(`clientes/${cid}/asignadas/${aid}`).delete(),'Rutina quitada')}
 
@@ -1034,10 +1077,12 @@ function vRutinas(){const P=S.plantillas;
   let h=`<div class="stack" style="padding-top:12px"><div class="row between"><h1>Rutinas</h1><button class="btn sm primary" onclick="nuevaRutina('plantilla')">+ Nueva</button></div>`;
   if(!P.length)h+=`<section class="card"><b>Crea tu primera rutina</b><span class="small">Arma la rutina una vez y asígnala a uno o a varios clientes. Les aparece en su pantalla «Hoy».</span><button class="btn primary" onclick="nuevaRutina('plantilla')">Crear rutina</button><button class="btn ghost" onclick="cargarEjemplos()">Agregar Empuje, Tirón y Pierna de ejemplo</button></section>`;
   P.forEach(r=>{const exs=r.ejercicios||[],n=S.clientes.filter(c=>c.asignadas?.includes?.(r.id)).length;
-    h+=`<section class="card"><div class="row between"><div class="grow"><h2>${esc(r.nombre)}</h2><span class="tiny">${exs.length} ejercicios · ${exs.reduce((a,e)=>a+ +e.series,0)} series</span></div><button class="btn sm ghost" onclick="editarRutina(${J(r.id)},'plantilla')">Editar</button></div>
+    h+=`<section class="card"><div class="row between"><div class="grow"><h2>${esc(r.nombre)}</h2><span class="tiny">${exs.length} ejercicios · ${exs.reduce((a,e)=>a+ +e.series,0)} series</span></div><button class="btn sm ghost" onclick="duplicarPlantilla(${J(r.id)})">Duplicar</button><button class="btn sm ghost" onclick="editarRutina(${J(r.id)},'plantilla')">Editar</button></div>
       <div class="grid4">${exs.slice(0,4).map(e=>mini(e.nombre,'mini sq')).join('')}</div><span class="small">${exs.map(e=>esc(e.nombre)).join(' · ')}</span>
       <button class="btn primary" onclick="abrirAsignar(${J(r.id)})">Asignar a clientes</button></section>`});
   return h+'</div>'}
+async function duplicarPlantilla(id){const p=S.plantillas.find(x=>x.id===id);if(!p)return;const{id:_,...d}=p;
+  await escribir(()=>S.db.doc('plantillas/r'+uid()).set({...d,nombre:(p.nombre+' (copia)').slice(0,60),orden:Date.now()}),'Rutina duplicada')}
 async function cargarEjemplos(){for(const [i,r] of EJEMPLOS.entries()){if(!await escribir(()=>S.db.doc('plantillas/r'+uid()).set({...r,orden:Date.now()+i})))return}toast('Rutinas de ejemplo agregadas')}
 function elegirPlantilla(cid){if(!S.plantillas.length){S.tab='rutinas';S.vista=null;render();return toast('Primero crea una rutina')}
   abrirHoja(`<div class="row between"><h2>¿Qué rutina asignas?</h2><button class="iconbtn" onclick="cerrarHoja()" aria-label="Cerrar">${IC.x}</button></div><div class="body">${S.plantillas.map(p=>`<button class="pick" onclick="abrirAsignar(${J(p.id)},${J(cid||null)})">${mini(p.ejercicios?.[0]?.nombre||'?','mini s44')}<span class="grow"><b style="display:block">${esc(p.nombre)}</b><span class="small">${(p.ejercicios||[]).length} ejercicios</span></span></button>`).join('')}</div>`)}
@@ -1062,7 +1107,7 @@ function vMensajes(){const C=[...S.clientes].sort((a,b)=>(b.ultMsg?.fecha||0)-(a
 function abrirChat(cid){cortar('chat');S.chat={cid,msgs:[]};S.chat.volver=S.vista;
   sub('chat',S.db.collection('clientes/'+cid+'/mensajes').orderBy('fecha','desc').limit(150),s=>{if(S.chat){S.chat.msgs=docs(s).reverse();marcarVisto(cid)}});
   S.vista='chat';render()}
-function cerrarChat(){const v=S.chat?.volver;cortar('chat');S.chat=null;S.vista=v==='cliente'&&S.det?'cliente':null;render()}
+function cerrarChat(){if(!S.chat)return;const v=S.chat.volver;cortar('chat');S.chat=null;S.vista=v==='cliente'&&S.det?'cliente':null;render()}
 function vChat(){const c=S.clientes.find(x=>x.id===S.chat.cid)||{id:S.chat.cid},n=nombreCliente(c);
   return `<div class="stack" style="padding-top:18px"><div class="row"><button class="iconbtn" onclick="cerrarChat()" aria-label="Volver">${IC.back}</button>${avatar(n)}<h1 class="grow" style="font-size:22px">${esc(n)}</h1></div>${hiloHTML(S.chat.msgs)}${cajaMsg(S.chat.cid)}</div>`}
 

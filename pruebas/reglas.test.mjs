@@ -33,6 +33,8 @@ await t('bob no mete campos raros', no(bob.doc('clientes/bob').update({ esCoach:
 await env.withSecurityRulesDisabled(c => c.firestore().doc('clientes/bob').update({ campoViejo: 1 }));
 await t('ficha con campo antiguo sigue guardando', ok(bob.doc('clientes/bob').update({ ultimo: 1 })));
 await t('bob elige azul', ok(bob.doc('clientes/bob').update({ sexo: 'm' })));
+await t('bob guarda tendencias', ok(bob.doc('clientes/bob').update({ tend: { ses30: 3, prs30: 1, estanc: [], sube: [] } })));
+await t('coach NO cambia tendencias', no(coach.doc('clientes/bob').update({ tend: {} })));
 await t('sexo inválido', no(bob.doc('clientes/bob').update({ sexo: 'x' })));
 await t('alias muy largo', no(bob.doc('clientes/bob').update({ alias: 'x'.repeat(41) })));
 
