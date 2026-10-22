@@ -90,6 +90,28 @@ await t('bob lee trad', ok(bob.doc('trad/x').get()));
 await t('bob NO escribe trad', no(bob.doc('trad/x').set({ pasos: [] })));
 await t('ruta desconocida bloqueada', no(bob.doc('otra/cosa').set({ a: 1 })));
 
+// SINPE
+await t('coach guarda SINPE', ok(coach.doc('config/coach').set({ sinpe: '88881234', monto: 25000, titular: 'Gene' }, { merge: true })));
+await t('bob NO cambia SINPE', no(bob.doc('config/coach').set({ sinpe: '80000000' }, { merge: true })));
+await t('bob sube comprobante', ok(bob.doc('clientes/bob/comprobantes/c1').set({ img: foto, ref: '123', monto: 25000, fecha: 1, estado: 'pendiente' })));
+await t('bob NO se aprueba solo', no(bob.doc('clientes/bob/comprobantes/c2').set({ img: foto, ref: '', monto: 25000, fecha: 1, estado: 'aprobado' })));
+await t('bob NO edita comprobante', no(bob.doc('clientes/bob/comprobantes/c1').update({ estado: 'aprobado' })));
+await t('bob marca comprobante pendiente', ok(bob.doc('clientes/bob').update({ compPend: { id: 'c1', fecha: 1, monto: 25000 } })));
+await t('eve NO ve comprobante de bob', no(eve.doc('clientes/bob/comprobantes/c1').get()));
+await t('coach aprueba', ok(coach.doc('clientes/bob/comprobantes/c1').update({ estado: 'aprobado', revisado: 2 })));
+await t('coach limpia pendiente', ok(coach.doc('clientes/bob').update({ compPend: null })));
+// Dolor
+await t('bob reporta dolor', ok(bob.doc('clientes/bob').update({ dolor: { z: { hombros: 2 }, nota: '', fecha: 1 } })));
+// Retos
+await t('coach crea reto', ok(coach.doc('retos/r1').set({ titulo: 'Nov', tipo: 'entrenos', desde: 0, hasta: 9e12, creado: 1 })));
+await t('bob NO crea retos', no(bob.doc('retos/r2').set({ titulo: 'x' })));
+await t('bob se une', ok(bob.doc('retos/r1/participantes/bob').set({ alias: 'Bob', valor: 3, act: 1 })));
+await t('bob NO inscribe a otro', no(bob.doc('retos/r1/participantes/eve').set({ alias: 'Eve', valor: 99, act: 1 })));
+await t('bob NO mete datos extra', no(bob.doc('retos/r1/participantes/bob').set({ alias: 'Bob', valor: 3, act: 1, peso: 80 })));
+await t('eve ve el ranking', ok(eve.collection('retos/r1/participantes').get()));
+await t('NO se une a reto inexistente', no(bob.doc('retos/nada/participantes/bob').set({ alias: 'Bob', valor: 1, act: 1 })));
+await t('anónimo NO ve retos', no(anon.collection('retos').get()));
+
 // Eliminar cliente (como lo hace la app)
 await t('coach marca eliminado', ok(coach.doc('acceso/eve').set({ bloqueado: true, eliminado: true, alias: 'Eve', eliminadoEl: 1 }, { merge: true })));
 await t('coach borra perfil', ok(coach.doc('clientes/eve').delete()));

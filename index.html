@@ -171,6 +171,10 @@ body.tema-f{--accent:#FF6EB4;--ok-bg:#331020;--ok-line:#6E2249;--ok-fg:#EBB0CC;-
 .hrow{border-top:1px solid var(--line)}.hrow:first-child{border-top:0}
 .hrow summary{display:flex;align-items:center;gap:10px;padding:10px 0;cursor:pointer;list-style:none}
 .hrow summary::-webkit-details-marker{display:none}
+/* Progresión y dolor en el entreno */
+.sug{font-size:13px;font-weight:600;padding:6px 10px;border-radius:10px;background:var(--raise);color:var(--muted)}
+.sug.sube{background:var(--ok-bg);color:var(--accent)}
+.aviso{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--warn);background:var(--warn-bg);border-radius:10px;padding:6px 6px 6px 10px}
 /* Hojas y pantallas superpuestas */
 .sheet-bg{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center}
 .sheet{background:var(--card);width:100%;max-width:560px;max-height:88vh;border-radius:24px 24px 0 0;display:flex;flex-direction:column;padding:18px max(16px,env(safe-area-inset-right,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
@@ -320,11 +324,12 @@ function mini(n,cls='mini'){const e=info(n);
   return `<span class="badge ${cls.includes('s44')?'s44':''}" aria-hidden="true">${esc(ab)}</span>`}
 function fotoHTML(n,extra=''){const e=info(n);if(!e||e.s<0)return'';
   return `<div class="foto ${extra}" role="img" aria-label="${esc(n)}: posición inicial y final"><img class="fr tono" src="${src(e.id,0)}" ${alt2} alt=""><img class="fr tono anim" src="${src(e.id,1)}" ${alt2} alt=""></div>`}
-function mapaMusculos(mus){
+function mapaMusculos(mus,opc={}){
   const P=mus[0],S2=new Set(mus.slice(1));
-  const f=m=>m===P?'var(--m-pri)':S2.has(m)?'var(--m-sec)':'var(--m-off)';
-  const E=(m,cx,cy,rx,ry,r=0)=>`<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" ${r?`transform="rotate(${r} ${cx} ${cy})"`:''} fill="${f(m)}"/>`;
-  const Pa=(m,d)=>`<path d="${d}" fill="${f(m)}"/>`;
+  const f=opc.color||(m=>m===P?'var(--m-pri)':S2.has(m)?'var(--m-sec)':'var(--m-off)');
+  const A=m=>opc.tap?`onclick="tocarZona('${m}')" style="cursor:pointer"`:'';
+  const E=(m,cx,cy,rx,ry,r=0)=>`<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" ${r?`transform="rotate(${r} ${cx} ${cy})"`:''} fill="${f(m)}" ${A(m)}/>`;
+  const Pa=(m,d)=>`<path d="${d}" fill="${f(m)}" ${A(m)}/>`;
   const cuerpo=x=>`<g fill="var(--m-body)"><ellipse cx="${x}" cy="22" rx="13" ry="16"/><rect x="${x-7}" y="34" width="14" height="14" rx="4"/>
     <path d="M${x-30},52 Q${x},40 ${x+30},52 L${x+28},120 Q${x+27},142 ${x+20},152 L${x-20},152 Q${x-27},142 ${x-28},120 Z"/>
     <rect x="${x-40}" y="50" width="16" height="58" rx="8" transform="rotate(8 ${x-32} 50)"/><rect x="${x+24}" y="50" width="16" height="58" rx="8" transform="rotate(-8 ${x+32} 50)"/>
@@ -334,16 +339,16 @@ function mapaMusculos(mus){
     <rect x="${x-23}" y="210" width="17" height="48" rx="8"/><rect x="${x+6}" y="210" width="17" height="48" rx="8"/>
     <ellipse cx="${x-15}" cy="261" rx="10" ry="4"/><ellipse cx="${x+15}" cy="261" rx="10" ry="4"/></g>`;
   const F=60,B=200;
-  let s=`<svg class="mapa" viewBox="0 0 260 272" role="img" aria-label="Músculos: ${esc(mus.join(', '))}">`+cuerpo(F)+cuerpo(B);
-  s+=`<rect x="${F-6}" y="36" width="12" height="11" rx="3" fill="${f('cuello')}"/>`;
+  let s=`<svg class="mapa" viewBox="0 0 260 272" role="img" aria-label="${opc.tap?'Mapa del cuerpo: toca una zona':'Músculos: '+esc(mus.join(', '))}">`+cuerpo(F)+cuerpo(B);
+  s+=`<rect x="${F-6}" y="36" width="12" height="11" rx="3" fill="${f('cuello')}" ${A('cuello')}/>`;
   s+=Pa('pecho',`M${F-27},60 Q${F-14},50 ${F-2},55 L${F-2},79 Q${F-16},85 ${F-27},74 Z`)+Pa('pecho',`M${F+27},60 Q${F+14},50 ${F+2},55 L${F+2},79 Q${F+16},85 ${F+27},74 Z`);
   s+=E('hombros',F-31,60,9,11,15)+E('hombros',F+31,60,9,11,-15)+E('bíceps',F-33,84,6.5,14,8)+E('bíceps',F+33,84,6.5,14,-8)+E('antebrazos',F-38,122,5.5,17,6)+E('antebrazos',F+38,122,5.5,17,-6);
-  s+=[0,1,2].map(i=>`<rect x="${F-11}" y="${88+i*15}" width="10" height="13" rx="3" fill="${f('abdomen')}"/><rect x="${F+1}" y="${88+i*15}" width="10" height="13" rx="3" fill="${f('abdomen')}"/>`).join('');
+  s+=[0,1,2].map(i=>`<rect x="${F-11}" y="${88+i*15}" width="10" height="13" rx="3" fill="${f('abdomen')}" ${A('abdomen')}/><rect x="${F+1}" y="${88+i*15}" width="10" height="13" rx="3" fill="${f('abdomen')}" ${A('abdomen')}/>`).join('');
   s+=Pa('abdomen',`M${F-24},88 L${F-14},90 L${F-14},130 L${F-22},126 Z`)+Pa('abdomen',`M${F+24},88 L${F+14},90 L${F+14},130 L${F+22},126 Z`);
   s+=E('cuádriceps',F-15,182,9.5,28,4)+E('cuádriceps',F+15,182,9.5,28,-4)+E('aductores',F-5,170,3.5,15)+E('aductores',F+5,170,3.5,15)+E('pantorrillas',F-15,230,6,16)+E('pantorrillas',F+15,230,6,16);
   s+=Pa('trapecio',`M${B-12},40 L${B+12},40 L${B+26},55 L${B},76 L${B-26},55 Z`)+Pa('espalda media',`M${B-11},70 L${B+11},70 L${B+8},98 L${B-8},98 Z`);
   s+=Pa('dorsales',`M${B-26},64 L${B-12},76 L${B-10},112 Q${B-22},108 ${B-27},92 Z`)+Pa('dorsales',`M${B+26},64 L${B+12},76 L${B+10},112 Q${B+22},108 ${B+27},92 Z`);
-  s+=`<rect x="${B-9}" y="104" width="18" height="30" rx="4" fill="${f('zona lumbar')}"/>`;
+  s+=`<rect x="${B-9}" y="104" width="18" height="30" rx="4" fill="${f('zona lumbar')}" ${A('zona lumbar')}/>`;
   s+=E('hombros',B-31,60,9,11,15)+E('hombros',B+31,60,9,11,-15)+E('tríceps',B-33,85,6.5,15,8)+E('tríceps',B+33,85,6.5,15,-8)+E('antebrazos',B-38,122,5.5,17,6)+E('antebrazos',B+38,122,5.5,17,-6);
   s+=E('abductores',B-24,150,4,10,-10)+E('abductores',B+24,150,4,10,10)+E('glúteos',B-11,160,11.5,13)+E('glúteos',B+11,160,11.5,13)+E('femorales',B-14,194,9,22,3)+E('femorales',B+14,194,9,22,-3)+E('pantorrillas',B-15,230,7,17)+E('pantorrillas',B+15,230,7,17);
   s+=`<text x="${F}" y="270" text-anchor="middle" class="mt">Frente</text><text x="${B}" y="270" text-anchor="middle" class="mt">Espalda</text></svg>`;
@@ -369,7 +374,7 @@ const S={db:null,auth:null,coachNombre:'',sinCoach:false,authModo:'entrar',me:nu
   ses:ls.get('hierro2-sesion',null),draft:null,edit:null,
   libQ:'',libG:'Todos',libE:'Todo equipo',pick:null,
   pose:'Frente',cmpA:null,cmpB:null,cmpPos:50,filtro:'todos',asg:null};
-let subs={comun:[],modo:[],det:[],chat:[]};
+let subs={comun:[],modo:[],det:[],chat:[],retos:[],ranking:[]};
 const guardarSes=()=>ls.set('hierro2-sesion',S.ses);
 const BASE=()=>'clientes/'+S.me;
 const PRIV=()=>'privado/'+S.me;
@@ -398,20 +403,20 @@ function init(){
   S.auth=firebase.auth();S.db=firebase.firestore();
   try{S.db.enablePersistence({synchronizeTabs:true}).catch(()=>{})}catch(e){}
   S.auth.onAuthStateChanged(u=>{
-    cortar('comun');cortar('modo');cortar('det');cortar('chat');
+    cortar('comun');cortar('modo');cortar('det');cortar('chat');cortar('retos');cortar('ranking');
     if(!u){S.me=null;S.listo=true;S.vista=null;render();return}
     S.me=u.uid;S.meName=u.displayName||'';S.listo=false;S.coachId=undefined;render();
     sub('comun',S.db.doc('config/coach'),s=>{
       // Esperar a que el servidor confirme: las reglas solo dejan ver los datos del coach cuando ya está guardado.
       if(s.metadata.hasPendingWrites)return;
       const antes=S.esOwner,primera=S.coachId===undefined;
-      S.coachId=s.exists?s.data().uid:null;S.coachNombre=s.exists?(s.data().nombre||''):'';S.sinCoach=!s.exists;
+      S.coachId=s.exists?s.data().uid:null;S.coachNombre=s.exists?(s.data().nombre||''):'';S.coachCfg=s.exists?s.data():{};S.sinCoach=!s.exists;
       S.esOwner=S.coachId===S.me;
       if(primera||antes!==S.esOwner){S.modo=S.esOwner?ls.get('gf-modo','coach'):'cliente';arrancarModo()}
       S.listo=true},null,{includeMetadataChanges:true});
   });
 }
-function arrancarModo(){cortar('modo');cortar('det');cortar('chat');S.det=null;S.chat=null;
+function arrancarModo(){cortar('modo');cortar('det');cortar('chat');cortar('retos');cortar('ranking');S.retos=[];S.retoYo={};S.det=null;S.chat=null;
   S.tab=S.modo==='coach'?'clientes':'hoy';if(S.vista!=='sesion')S.vista=null;
   if(S.modo==='coach')suscribirCoach();else suscribirCliente()}
 async function serCoach(){const nombre=($('#cnom')?.value||S.meName||'').trim().slice(0,40)||'Coach';
@@ -427,6 +432,8 @@ function suscribirCliente(){
   sub('modo',S.db.collection(PRIV()+'/rutinas'),s=>S.rut=docs(s).sort((a,b)=>(a.orden||0)-(b.orden||0)));
   sub('modo',S.db.collection(PRIV()+'/medidas'),s=>S.med=docs(s).sort((a,b)=>a.fecha-b.fecha));
   sub('modo',S.db.collection(PRIV()+'/fotos'),s=>S.fotos=docs(s));
+  sub('modo',S.db.collection(BASE()+'/comprobantes').orderBy('fecha','desc').limit(3),s=>S.comp=docs(s));
+  suscribirRetos();
 }
 function crearSiFalta(){if(S.perfil!==null||S.acceso===undefined||restringido()||!S.meName||S.creando)return;S.creando=true;
   const base={alias:S.meName.slice(0,40),alta:Date.now(),compartir:false,v:2};
@@ -436,6 +443,7 @@ function suscribirCoach(){
   sub('modo',S.db.collection('clientes'),s=>S.clientes=docs(s));
   sub('modo',S.db.collection('acceso'),s=>{S.accesos=docs(s);S.sinReglasAcceso=false},()=>{S.accesos=[];S.sinReglasAcceso=true});
   sub('modo',S.db.collection('plantillas'),s=>S.plantillas=docs(s).sort((a,b)=>(a.orden||0)-(b.orden||0)));
+  suscribirRetos();
 }
 function cambiarModo(m){if(S.vista==='sesion'&&m==='coach'){S.vista=null}S.modo=m;ls.set('gf-modo',m);arrancarModo();render();scrollTo(0,0)}
 
@@ -470,6 +478,7 @@ function render(){
   else if(S.vista==='sesion'&&S.ses){html=vSesion();nav=false;top=false}
   else if(S.vista==='editor'&&S.draft){html=vEditor();nav=false;top=false}
   else if(S.vista==='ej'&&S.ejSel){html=vEjercicio();nav=false;top=false}
+  else if(S.vista==='dolor'&&S.modo==='cliente'&&S.perfil){html=vDolor();nav=false;top=false}
   else if(S.vista==='cliente'&&S.det){html=vClienteDet();nav=false;top=false}
   else if(S.vista==='chat'&&S.chat){html=vChat();nav=false;top=false}
   else if(S.modo==='cliente'&&S.perfil===undefined){html='<div class="cargando">Cargando tu plan…</div>';nav=false}
@@ -489,7 +498,7 @@ function pintarNav(show){$('#nav').hidden=!show;if(!show)return;
   const visto=ls.get('gf-visto',{});
   const punto=k=>{if(k==='coach'){const u=S.perfil?.ultMsg;return u&&u.de!==S.me&&u.fecha>(visto[S.me]||0)}
     if(k==='mensajes')return S.clientes.some(c=>c.ultMsg&&c.ultMsg.de!==S.me&&c.ultMsg.fecha>(visto[c.id]||0));
-    if(k==='hoy')return !!S.ses;if(k==='pagos')return S.clientes.some(c=>c.id!==S.me&&pago(accesoDe(c.id)).k==='venc');return false};
+    if(k==='hoy')return !!S.ses;if(k==='pagos')return S.clientes.some(c=>c.id!==S.me&&(c.compPend||pago(accesoDe(c.id)).k==='venc'));return false};
   $('#navIn').classList.toggle('c5',t.length===5);
   $('#navIn').innerHTML=t.map(([k,l,i])=>`<button onclick="irA('${k}')" ${S.tab===k?'aria-current="page"':''}>${i}${l}${punto(k)?'<span class="dot" aria-label="nuevo"></span>':''}</button>`).join('')}
 function irA(t){S.tab=t;S.vista=null;render();scrollTo(0,0)}
@@ -498,7 +507,7 @@ function vSinConfig(){return `<div class="stack" style="padding-top:40px"><h1>Fa
    para que la siguiente persona que use el aparato no vea nada del anterior. */
 async function salir(){if(S.ses&&!confirmSalir){confirmSalir=true;return toast('Tienes un entreno en curso. Si sales se descarta. Toca «Salir» otra vez para salir igual.')}confirmSalir=false;
   $('#view').innerHTML='<div class="cargando">Cerrando sesión…</div>';$('#nav').hidden=true;
-  cortar('comun');cortar('modo');cortar('det');cortar('chat');
+  cortar('comun');cortar('modo');cortar('det');cortar('chat');cortar('retos');cortar('ranking');
   try{await S.auth.signOut()}catch(e){}
   try{await S.db.terminate();await S.db.clearPersistence()}catch(e){console.warn(e)}
   ['hierro2-sesion','gf-visto','gf-modo','gf-soycliente','gf-tema'].forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
@@ -553,6 +562,7 @@ function vHoy(){
   const nom=S.perfil?.alias||S.meName||'';
   let h=`<div class="stack" style="padding-top:12px"><div><span class="small">${esc(hoy.toLocaleDateString('es-CR',{weekday:'long',day:'numeric',month:'long'}))}</span><h1>Hola${nom?', '+esc(nom.split(' ')[0]):''}</h1></div>`;
   h+=tarjetaSexo()+bannerInstalar();
+  {const pa=pago(S.acceso);if(['pronto','venc'].includes(pa.k)||S.comp?.[0]?.estado==='pendiente')h+=tarjetaSinpe()}
   h+=`<div class="semana" aria-label="Esta semana">${LETRAS.map((l,i)=>{const t=new Date(L+i*DIA);const c=hechos.has(t.toDateString())?'hecho':(i===hoyDow()?'hoy':'');return `<div class="dia ${c}"><span class="tiny">${l}</span><b>${t.getDate()}</b></div>`}).join('')}</div>`;
   if(S.ses){const all=S.ses.ejercicios.flatMap(e=>e.sets);h+=`<div class="card line" style="border-color:var(--ok-line);background:var(--ok-bg)"><span class="eyebrow ac">En curso</span><h2>${esc(S.ses.rutina)}</h2><span class="small" style="color:var(--ok-fg)">${all.filter(x=>x.ok).length} de ${all.length} series · empezaste ${hace(S.ses.inicio)}</span><button class="btn primary go" onclick="abrirSesion()">${IC.play} Continuar</button></div>`}
   const r=rutinaDeHoy();
@@ -561,6 +571,7 @@ function vHoy(){
     h+=`<section class="card line"><div class="row between"><span class="eyebrow ac">${cuando}</span><span class="small">De tu coach</span></div>
       <div><h2 style="font-size:34px">${esc(r.nombre)}</h2><span class="small">${exs.length} ejercicios · ${series} series · ~${min} min</span></div>
       <div class="grid4">${exs.slice(0,4).map(e=>mini(e.nombre,'mini sq')).join('')}</div>
+      ${(n=>n?`<div class="small" style="color:var(--warn)">⚠ ${n} ejercicio${n>1?'s cargan':' carga'} zonas donde te duele. Al empezar te damos alternativas.</div>`:'')(exs.filter(e=>enRiesgo(e.nombre).length).length)}
       ${r.nota?`<div class="row" style="align-items:flex-start;background:var(--raise);border-radius:14px;padding:12px;gap:10px"><span style="color:var(--accent);flex:none;width:18px;height:18px;display:flex">${IC.chat}</span><span style="font-size:15px;color:#D5D9DF">${esc(r.nota)}</span></div>`:''}
       ${S.ses?'':`<button class="btn primary go" onclick="iniciar('asig',${J(r.id)})">${IC.play} Empezar</button>`}</section>`}
   else h+=`<section class="card line"><span class="eyebrow ac">Rutina de hoy</span><h2>Tu coach aún no te asigna rutina</h2><p class="small" style="margin:0">Mientras tanto puedes hacer un entrenamiento libre o armar tu propia rutina.</p>
@@ -568,6 +579,7 @@ function vHoy(){
   const ult=[...S.recs].sort((a,b)=>b.fecha-a.fecha)[0],rc=racha();
   h+=`<div class="grid2"><div class="tile"><span class="tiny">Racha</span><span class="big">${rc} <span class="u">${rc===1?'semana':'semanas'}</span></span></div>
     <button class="tile" style="border:0;text-align:left;color:var(--fg)" onclick="irA('progreso')"><span class="tiny">Último récord</span>${ult?`<span class="big">${fmt(ult.kg)} <span class="u">kg</span></span><span class="small" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(ult.nombre)}</span>`:'<span class="small">Aún sin récords</span>'}</button></div>`;
+  h+=tarjetaRetos()+tarjetaDolor();
   const otras=S.asig.filter(a=>a.id!==r?.id);
   if(otras.length||S.rut.length||r){h+=`<div class="row between" style="margin-top:4px"><h3 class="eyebrow">Otras rutinas</h3><button class="btn sm ghost" onclick="nuevaRutina('rutina')">+ Mi rutina</button></div>`;
     h+=otras.map(a=>filaRutina(a,'asig','de tu coach')).join('')+S.rut.map(a=>filaRutina(a,'rut','tuya')).join('');
@@ -588,7 +600,8 @@ function iniciar(tipo,id){
   if(S.ses){abrirSesion();return toast('Ya tienes un entrenamiento en curso')}
   const r=tipo==='asig'?S.asig.find(x=>x.id===id):tipo==='rut'?S.rut.find(x=>x.id===id):{nombre:'Entrenamiento libre',ejercicios:[]};if(!r)return;
   S.ses={rutina:r.nombre,inicio:Date.now(),descFin:0,descTotal:0,
-    ejercicios:(r.ejercicios||[]).map(e=>({k:uid(),nombre:e.nombre,desc:+e.desc||90,sig:!!e.sig,nota:'',sets:Array.from({length:+e.series||1},()=>({kg:+e.kg||0,reps:+e.reps||10,ok:false,t:'n'}))}))};
+    ejercicios:(r.ejercicios||[]).map(e=>{const sg=progresionActiva()?sugerencia(e.nombre,+e.reps):null,peso=sg&&sg.kg>=(+e.kg||0)?sg.kg:+e.kg||0;
+      return {k:uid(),nombre:e.nombre,desc:+e.desc||90,sig:!!e.sig,nota:'',obj:+e.reps||0,sug:sg&&peso===sg.kg?{accion:sg.accion,txt:sg.txt}:null,sets:Array.from({length:+e.series||1},()=>({kg:peso,reps:+e.reps||10,ok:false,t:'n'}))}})};
   guardarSes();abrirSesion();pedirWake()}
 function abrirSesion(){S.vista='sesion';render();scrollTo(0,0)}
 function minimizar(){S.vista=null;S.tab='hoy';render();scrollTo(0,0)}
@@ -613,6 +626,8 @@ function vSesion(){const s=S.ses,t=totales(),G=grupos(s.ejercicios);
   s.ejercicios.forEach((e,i)=>{const prev=ultimo(e.nombre),g=G[i];
     h+=`<section class="card ${g?'ss':''}">${g?`<span class="eyebrow ac">Superserie ${g}</span>`:''}<div class="row">${mini(e.nombre)}<div class="grow"><button class="exname" onclick="abrirFicha(${J(e.nombre)})">${esc(e.nombre)}</button><div class="small">${esc(grupoDe(e.nombre))} · ${e.sig&&i<s.ejercicios.length-1?'sin descanso, sigue el próximo':'descanso '+(e.desc?e.desc+' s':'apagado')}</div></div>
       <button class="iconbtn" onclick="menuEj(${i})" aria-label="Opciones de ${esc(e.nombre)}">${IC.dots}</button></div>
+      ${e.sug?`<div class="sug ${e.sug.accion}">${e.sug.accion==='sube'?'▲':'='} ${esc(e.sug.txt)}</div>`:''}
+      ${(z=>z.length?`<div class="aviso"><span class="grow">⚠ Carga ${esc(z.join(', '))}, donde te duele.</span><button class="btn sm ghost" onclick="verAlternativas(${i})">Alternativas</button></div>`:'')(enRiesgo(e.nombre))}
       ${e.nota?`<div class="notice" style="color:var(--fg);padding:8px 12px"><b>Nota:</b> ${esc(e.nota)}</div>`:''}
       <div class="sets"><span class="h">Serie</span><span class="h">Anterior</span><span class="h">Kg</span><span class="h">Reps</span><span class="h" aria-hidden="true">✓</span>
       ${e.sets.map((x,j)=>{const pv=prev?.[j],d=x.ok?'done':'',lb=etiqueta(e.sets,j),tp=TIPOS[x.t||'n'];return `<button class="n ${d}" style="${tp.col?'color:'+tp.col:''}" onclick="menuSerie(${i},${j})" aria-label="Serie ${lb}: ${tp.l}${x.rpe?', RPE '+x.rpe:''}. Cambiar tipo o RPE">${lb}${x.rpe?`<small>@${fmt(x.rpe)}</small>`:''}</button>
@@ -695,7 +710,7 @@ async function guardarSesion(){
     await S.db.doc(BASE()).update({ultimo:f,ultTitulo:titulo,ultMin:min,ultPRs:prs.length,ultVol:Math.round(vol)});
   });
   if(!ok){const b=$('#btnGuardar');if(b)b.disabled=false;return}
-  S.db.doc(BASE()).update({tend:tendencias([{fecha:f,prs,detalle},...S.hist.filter(h=>h.id!==id)])}).catch(e=>console.warn('tend',e));
+  {const H2=[{id,fecha:f,prs,detalle,series,volumen:Math.round(vol)},...S.hist.filter(h=>h.id!==id)];S.db.doc(BASE()).update({tend:tendencias(H2)}).catch(e=>console.warn('tend',e));actualizarRetos(H2)}
   cerrarHoja();S.ses=null;guardarSes();try{wake?.release()}catch(e){}wake=null;S.vista=null;S.tab='hoy';render();scrollTo(0,0);
   toast(prs.length?`¡Guardado! ${prs.length} récord${prs.length>1?'s':''} nuevo${prs.length>1?'s':''}: ${prs.join(', ')}`:'¡Entrenamiento guardado! Tu coach ya lo puede ver.')}
 
@@ -727,7 +742,7 @@ function abrirFicha(n,conAgregar){const e=info(n),f=$('#ficha');f.hidden=false;
   f.scrollTop=0;if(e)cargarPasos(e)}
 function cerrarFicha(){const f=$('#ficha');f.hidden=true;f.innerHTML=''}
 function abrirHoja(html){const s=$('#sheet');s.hidden=false;s.innerHTML=`<div class="sheet-bg" onclick="if(event.target===this)cerrarHoja()"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`}
-function cerrarHoja(){const s=$('#sheet');s.hidden=true;s.innerHTML='';S.pick=null;S.asg=null;if(pendiente&&!enfocado()){pendiente=false;render()}}
+function cerrarHoja(){cortar('ranking');const s=$('#sheet');s.hidden=true;s.innerHTML='';S.pick=null;S.asg=null;if(pendiente&&!enfocado()){pendiente=false;render()}}
 
 /* ================= Editor de rutinas (cliente y coach) ================= */
 function nuevaRutina(dest){S.edit={dest,id:null};S.draft={nombre:'',ejercicios:[]};S.vista='editor';render();scrollTo(0,0)}
@@ -804,9 +819,9 @@ function progHistorial(){const H=S.hist;let h='';
 async function guardarMedidas(ev){ev.preventDefault();const d={fecha:Date.now()};let n=0;
   MED.forEach(([k])=>{const v=parseFloat(String($('#m-'+k).value).replace(',','.'));if(!isNaN(v)&&v>0){d[k]=v;n++}});if(!n)return toast('Escribe al menos una medida');
   const id='m'+uid();await escribir(async()=>{await S.db.doc(PRIV()+'/medidas/'+id).set(d);if(S.perfil?.compartir)await S.db.doc(BASE()+'/medidas/'+id).set(d)},'Medidas guardadas')}
-function comprimir(file){return new Promise((res,rej)=>{const img=new Image(),u=URL.createObjectURL(file);
-  img.onload=()=>{const s=Math.min(1,600/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);
-    c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);res(c.toDataURL('image/jpeg',.68))};img.onerror=()=>rej(new Error('img'));img.src=u})}
+function comprimir(file,max=600,q=.68){return new Promise((res,rej)=>{const img=new Image(),u=URL.createObjectURL(file);
+  img.onload=()=>{const s=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);res(c.toDataURL('image/jpeg',q))};img.onerror=()=>rej(new Error('img'));img.src=u})}
 async function subirFoto(inp){const f=inp.files?.[0];inp.value='';if(!f)return;toast('Guardando foto…');
   let img;try{img=await comprimir(f)}catch(e){return toast('No se pudo leer esa imagen. Prueba con otra foto.')}
   const id='f'+uid(),d={img,pose:S.pose,fecha:Date.now()};
@@ -907,6 +922,129 @@ function vEjercicio(){const n=S.ejSel,P=sesionesDe(histEj(),n),k=S.ejVar||'rm';
    <button class="btn ghost block" onclick="abrirFicha(${J(n)})">Ver cómo se hace</button></div>`;
   return h}
 
+/* ================= SINPE Móvil: pago de la mensualidad con comprobante ================= */
+const colones=n=>'₡'+Math.round(+n||0).toLocaleString('es-CR');
+const telFmt=t=>String(t||'').replace(/\D/g,'').replace(/^(\d{4})(\d{4})$/,'$1-$2');
+function copiar(txt,msg){const ok=()=>toast(msg||'Copiado');try{navigator.clipboard.writeText(String(txt)).then(ok,()=>toast(String(txt)))}catch(e){toast(String(txt))}}
+function tarjetaSinpe(){const c=S.coachCfg||{};if(!c.sinpe||S.esOwner)return'';const ult=S.comp?.[0],nom=S.coachNombre||'tu coach';
+  const est=ult&&Date.now()-ult.fecha<40*DIA?ult.estado:null;
+  return `<section class="card line" style="border-color:var(--ok-line)"><div class="row between"><b>Paga tu mensualidad por SINPE</b>${S.acceso?.pagoHasta?`<span class="small">hasta el ${fecha(S.acceso.pagoHasta)}</span>`:''}</div>
+   <div class="grid2"><button class="tile" style="border:0;text-align:left;color:var(--fg);background:var(--raise)" onclick="copiar(${J(String(c.sinpe).replace(/\D/g,''))},'Número copiado')"><span class="tiny">SINPE Móvil · toca para copiar</span><span class="big" style="font-size:22px">${esc(telFmt(c.sinpe))}</span><span class="tiny">${esc(c.titular||nom)}</span></button>
+    <button class="tile" style="border:0;text-align:left;color:var(--fg);background:var(--raise)" onclick="copiar(${J(String(Math.round(+c.monto||0)))},'Monto copiado')"><span class="tiny">Monto · toca para copiar</span><span class="big" style="font-size:22px">${c.monto?colones(c.monto):'—'}</span><span class="tiny">por mes</span></button></div>
+   ${est==='pendiente'?`<div class="notice" style="color:var(--fg)">Comprobante enviado ${hace(ult.fecha)}. ${esc(nom)} lo está revisando.</div>`:
+     `${est==='rechazado'?`<div class="notice" style="color:var(--warn)">Tu último comprobante no se pudo confirmar. Revisa el chat y vuelve a enviarlo.</div>`:est==='aprobado'?`<div class="small" style="color:var(--ok-fg)">Último pago aprobado ${hace(ult.revisado||ult.fecha)}.</div>`:''}
+     <span class="small">1. Abre la app de tu banco y paga por SINPE Móvil.  2. Toma captura del comprobante y súbela aquí.</span>
+     <div class="field"><label class="lbl" for="comp-ref">Número de referencia (opcional)</label><input class="input" id="comp-ref" inputmode="numeric" maxlength="40" placeholder="Ej: 2026102212345678"></div>
+     <label class="btn primary block" for="comp-in">${IC.cam} Subir comprobante</label><input id="comp-in" type="file" accept="image/*" hidden onchange="subirComprobante(this)">`}</section>`}
+async function subirComprobante(inp){const f=inp.files?.[0];inp.value='';if(!f)return;const ref=($('#comp-ref')?.value||'').trim().slice(0,40);try{document.activeElement?.blur()}catch(e){}toast('Enviando comprobante…');
+  let img;try{img=await comprimir(f,1100,.72)}catch(e){return toast('No se pudo leer esa imagen. Prueba con otra captura.')}
+  const id='c'+uid(),d={img,ref,monto:+(S.coachCfg?.monto)||0,fecha:Date.now(),estado:'pendiente'};
+  await escribir(async()=>{await S.db.doc(BASE()+'/comprobantes/'+id).set(d);await S.db.doc(BASE()).update({compPend:{id,fecha:d.fecha,monto:d.monto}})},'Comprobante enviado. Te avisamos cuando lo aprueben.')}
+/* Coach: datos de cobro y revisión de comprobantes */
+function cardSinpeCoach(){const c=S.coachCfg||{};
+  return `<details class="card" ${c.sinpe?'':'open'}><summary style="font-weight:700;cursor:pointer">Cobro por SINPE Móvil ${c.sinpe?`<span class="small" style="font-weight:500"> · ${esc(telFmt(c.sinpe))} · ${c.monto?colones(c.monto):''}</span>`:''}</summary>
+   <form class="stack" style="margin-top:12px" onsubmit="guardarSinpe(event)"><div class="grid2"><div class="field"><label class="lbl" for="sp-tel">Número SINPE</label><input class="input" id="sp-tel" type="tel" inputmode="numeric" maxlength="9" required placeholder="8888-8888" value="${esc(telFmt(c.sinpe))}"></div>
+    <div class="field"><label class="lbl" for="sp-monto">Mensualidad (₡)</label><input class="input" id="sp-monto" type="number" inputmode="numeric" min="0" step="500" required value="${esc(c.monto||'')}"></div></div>
+    <div class="field"><label class="lbl" for="sp-tit">A nombre de</label><input class="input" id="sp-tit" maxlength="60" value="${esc(c.titular||S.coachNombre||'')}"></div>
+    <button class="btn primary block">Guardar datos de cobro</button><span class="small">Tus clientes ven este número y el monto para pagarte, y te suben el comprobante.</span></form></details>`}
+async function guardarSinpe(ev){ev.preventDefault();const tel=$('#sp-tel').value.replace(/\D/g,'');if(tel.length!==8)return toast('El número SINPE debe tener 8 dígitos');
+  await escribir(()=>S.db.doc('config/coach').set({sinpe:tel,monto:Math.max(0,+$('#sp-monto').value||0),titular:$('#sp-tit').value.trim().slice(0,60)},{merge:true}),'Datos de cobro guardados')}
+function filaComp(c){const p=c.compPend,n=nombreCliente(c);return `<div class="card" style="padding:12px;flex-direction:row;align-items:center">${avatar(n)}<div class="grow"><b>${esc(n)}</b><div class="small">Comprobante ${p.monto?'de '+colones(p.monto)+' ':''}· ${hace(p.fecha)}</div></div><button class="btn sm primary" onclick="revisarComp(${J(c.id)})">Revisar</button></div>`}
+async function revisarComp(cid){const c=S.clientes.find(x=>x.id===cid),p=c?.compPend;if(!p)return;let d;
+  try{const s=await S.db.doc(`clientes/${cid}/comprobantes/${p.id}`).get();d=s.data()}catch(e){return toast('No se pudo abrir el comprobante')}if(!d)return toast('No se encontró el comprobante');
+  const a=accesoDe(cid),ph=unMesDespues(Math.max(Date.now(),a?.pagoHasta||0));
+  abrirHoja(`<div class="row between"><h2>Comprobante de ${esc(nombreCliente(c))}</h2><button class="iconbtn" onclick="cerrarHoja()" aria-label="Cerrar">${IC.x}</button></div>
+   <div class="body"><img src="${esc(d.img)}" alt="Comprobante de SINPE" style="width:100%;border-radius:12px;background:#fff">
+   <div class="grid2"><div class="tile" style="background:var(--raise)"><span class="tiny">Monto esperado</span><b>${d.monto?colones(d.monto):'—'}</b></div><div class="tile" style="background:var(--raise)"><span class="tiny">Referencia</span><b style="word-break:break-all">${esc(d.ref||'—')}</b></div></div>
+   <span class="small">Confírmalo en tu banco antes de aprobar. Enviado ${hace(d.fecha)}.</span>
+   <button class="btn primary go" onclick="aprobarComp(${J(cid)},${J(p.id)})">Aprobar: al día hasta el ${fecha(ph)}</button>
+   <button class="btn danger block" onclick="rechazarComp(${J(cid)},${J(p.id)},this)">Rechazar</button></div>`)}
+async function aprobarComp(cid,id){const del=firebase.firestore.FieldValue.delete();
+  const ok=await escribir(async()=>{await S.db.doc(`clientes/${cid}/comprobantes/${id}`).update({estado:'aprobado',revisado:Date.now()});await S.db.doc('clientes/'+cid).update({compPend:del})});
+  if(ok){cerrarHoja();await registrarPago(cid)}}
+async function rechazarComp(cid,id,b){if(!b.dataset.ok){b.dataset.ok=1;b.textContent='Toca otra vez para rechazar';return}const del=firebase.firestore.FieldValue.delete();
+  const m={de:S.me,texto:'No pude confirmar tu comprobante de SINPE. ¿Me lo envías de nuevo o me confirmas la referencia?',fecha:Date.now()};
+  if(await escribir(async()=>{await S.db.doc(`clientes/${cid}/comprobantes/${id}`).update({estado:'rechazado',revisado:Date.now()});await S.db.doc('clientes/'+cid).update({compPend:del,ultMsg:m});await S.db.collection('clientes/'+cid+'/mensajes').doc('m'+uid()).set(m)},'Comprobante rechazado. Le avisamos por el chat.'))cerrarHoja()}
+
+/* ================= Mapa de dolor y lesiones ================= */
+const INTENS=['','Leve','Moderado','Fuerte'],COLD=['','#FFB066','#FF8A4C','#FF5A4A'];
+const dolorDe=p=>{const d=p?.dolor;return d&&d.z&&Object.keys(d.z).length?d:null};
+const zonasDolor=()=>dolorDe(S.perfil)?.z||{};
+const enRiesgo=(n,z=zonasDolor())=>(info(n)?.mus||[]).filter(m=>z[m]);
+function alternativas(n,z=zonasDolor()){const e=info(n);if(!e)return[];
+  return (LIB[e.g]||[]).filter(x=>x!==n&&EJ[x].s>=0&&!EJ[x].mus.some(m=>z[m])).sort((a,b)=>(EJ[a].eq===e.eq?0:1)-(EJ[b].eq===e.eq?0:1)||(EJ[a].mus[0]===e.mus[0]?0:1)-(EJ[b].mus[0]===e.mus[0]?0:1)).slice(0,8)}
+const zonasTxt=z=>Object.entries(z).sort((a,b)=>b[1]-a[1]).map(([m,v])=>`${m} (${INTENS[v].toLowerCase()})`).join(', ');
+function tarjetaDolor(){const d=dolorDe(S.perfil);
+  if(!d)return `<button class="btn ghost block" onclick="abrirDolor()">¿Te duele algo? Márcalo en el mapa</button>`;
+  return `<section class="card line" style="border-color:var(--warn)"><div class="row between"><b>Te duele</b><span class="small">${hace(d.fecha)}</span></div><span class="small" style="color:var(--fg)">${esc(zonasTxt(d.z))}</span>${d.nota?`<span class="small">«${esc(d.nota)}»</span>`:''}
+   <span class="small">En tus entrenos marcamos los ejercicios que cargan esa zona y te damos alternativas. Tu coach también lo ve.</span><button class="btn sm ghost" style="align-self:flex-start" onclick="abrirDolor()">Actualizar</button></section>`}
+function abrirDolor(){S.dolorDraft={...zonasDolor()};S.dolorNota=dolorDe(S.perfil)?.nota||'';S.vista='dolor';render();scrollTo(0,0)}
+function tocarZona(m){const z=S.dolorDraft;z[m]=((z[m]||0)+1)%4;if(!z[m])delete z[m];const y=scrollY;render();scrollTo(0,y)}
+function vDolor(){const z=S.dolorDraft||{};
+  return `<div class="stack" style="padding-top:18px"><div class="row"><button class="iconbtn" onclick="S.vista=null;render()" aria-label="Volver">${IC.back}</button><h1 class="grow" style="font-size:24px">¿Dónde te duele?</h1></div>
+   <span class="small">Toca la zona: una vez es leve, dos moderado, tres fuerte y cuatro la borra.</span>
+   <div class="card">${mapaMusculos([],{color:m=>z[m]?COLD[z[m]]:'var(--m-off)',tap:true})}
+    <div class="row" style="gap:14px;flex-wrap:wrap;justify-content:center">${[1,2,3].map(i=>`<span class="small"><i class="leg" style="background:${COLD[i]}"></i>${INTENS[i]}</span>`).join('')}</div></div>
+   <div class="chips">${META.mus.map(m=>`<button class="chip sm" aria-pressed="${!!z[m]}" onclick="tocarZona(${J(m)})" style="${z[m]?`background:${COLD[z[m]]};border-color:${COLD[z[m]]};color:var(--ink)`:''}">${esc(m)}${z[m]?' · '+INTENS[z[m]]:''}</button>`).join('')}</div>
+   <div class="field"><label class="lbl" for="dnota">¿Qué pasó? (opcional)</label><textarea class="input" id="dnota" maxlength="200" placeholder="Ej: me molesta el hombro derecho al empujar" oninput="S.dolorNota=this.value">${esc(S.dolorNota||'')}</textarea></div>
+   <button class="btn primary go" onclick="guardarDolor()">${Object.keys(z).length?'Guardar':'Ya no me duele nada'}</button>
+   <span class="small">Si el dolor es fuerte o no se quita, consulta a un médico o fisioterapeuta.</span></div>`}
+async function guardarDolor(){const z=S.dolorDraft||{},nota=(S.dolorNota||'').trim().slice(0,200);
+  if(await escribir(()=>S.db.doc(BASE()).update({dolor:{z,nota,fecha:Date.now()}}),Object.keys(z).length?'Guardado. Te marcamos los ejercicios con cuidado.':'¡Qué bien! Quitamos los avisos.')){S.vista=null;render()}}
+function verAlternativas(i){const e=S.ses.ejercicios[i],z=zonasDolor(),A=alternativas(e.nombre,z);
+  abrirHoja(`<div class="row between"><h2>En vez de ${esc(e.nombre)}</h2><button class="iconbtn" onclick="cerrarHoja()" aria-label="Cerrar">${IC.x}</button></div>
+   <div class="body"><span class="small">Del mismo grupo y sin cargar ${esc(enRiesgo(e.nombre,z).join(', '))}.</span>${A.length?A.map(x=>`<div class="row" style="gap:6px"><button class="pick grow" onclick="cambiarPorAlternativa(${i},${J(x)})">${mini(x,'mini s44')}<span class="grow"><b style="display:block">${esc(x)}</b><span class="small">${esc(EJ[x].eq)} · ${esc(EJ[x].mus.join(', '))}</span></span></button><button class="iconbtn" onclick="abrirFicha(${J(x)})" aria-label="Cómo se hace ${esc(x)}">${IC.info}</button></div>`).join(''):'<div class="empty">No encontramos una alternativa segura. Pregúntale a tu coach o salta este ejercicio.</div>'}</div>`)}
+function cambiarPorAlternativa(i,x){const e=S.ses.ejercicios[i];e.nombre=x;e.sug=null;guardarSes();cerrarHoja();render();toast('Cambiado por '+x)}
+
+/* ================= Progresión automática ================= */
+/* Doble progresión: si la vez pasada completaste las reps objetivo en todas las series de trabajo
+   con RPE 8 o menos, sube el peso; si no, mantenlo y busca más reps. */
+const progresionActiva=()=>S.esOwner?ls.get('gf-prog',true):S.acceso?.progAuto!==false;
+function sugerencia(nombre,obj){if(!obj)return null;const prev=ultimo(nombre);if(!prev)return null;const ef=prev.filter(x=>x.t!=='w');if(!ef.length)return null;
+  const top=Math.max(...ef.map(x=>x.kg));if(!top)return null;const S2=ef.filter(x=>x.kg===top),rp=S2.map(x=>x.rpe).filter(Boolean),rpe=rp.length?Math.max(...rp):null;
+  const cumplio=S2.every(x=>x.reps>=obj),paso=top>=20?2.5:1;
+  if(cumplio&&(rpe==null||rpe<=8))return{kg:top+paso,accion:'sube',txt:`Sube ${fmt(paso)} kg: la vez pasada hiciste ${obj} reps${rpe?' con RPE '+fmt(rpe):''}`};
+  if(cumplio)return{kg:top,accion:'igual',txt:`Mantén ${fmt(top)} kg: llegaste a las reps pero con RPE ${fmt(rpe)}`};
+  return{kg:top,accion:'igual',txt:`Mantén ${fmt(top)} kg y busca llegar a ${obj} reps`}}
+
+/* ================= Retos entre clientes ================= */
+const TRETO={entrenos:['Más entrenos','entrenos',H=>H.length],series:['Más series','series',H=>H.reduce((a,h)=>a+(h.series||0),0)],volumen:['Más volumen','kg',H=>Math.round(H.reduce((a,h)=>a+(h.volumen||0),0))]};
+const retoActivo=r=>r.desde<=Date.now()&&r.hasta>=Date.now();
+const valorReto=(r,H)=>(TRETO[r.tipo]||TRETO.entrenos)[2](H.filter(h=>h.fecha>=r.desde&&h.fecha<=r.hasta));
+const restan=r=>{const d=Math.ceil((r.hasta-Date.now())/DIA);return d<=0?'termina hoy':d===1?'queda 1 día':`quedan ${d} días`};
+function tarjetaRetos(){const R=(S.retos||[]).filter(r=>r.hasta>=Date.now()-3*DIA).sort((a,b)=>a.hasta-b.hasta);if(!R.length)return'';
+  return `<section class="card"><b>Retos del gimnasio</b>${R.map(r=>{const t=TRETO[r.tipo]||TRETO.entrenos,yo=S.retoYo?.[r.id],v=valorReto(r,S.hist);
+    return `<div class="list-row"><div class="grow"><b>${esc(r.titulo)}</b><div class="small">${retoActivo(r)?restan(r):r.desde>Date.now()?'empieza el '+fecha(r.desde):'terminó'} · tú: ${kg(v)} ${t[1]}</div></div>${yo?`<button class="btn sm ghost" onclick="verRanking(${J(r.id)})">Ranking</button>`:retoActivo(r)?`<button class="btn sm primary" onclick="unirseReto(${J(r.id)})">Unirme</button>`:''}</div>`}).join('')}
+   <span class="small">En el ranking solo se ve tu nombre y tu número.</span></section>`}
+async function unirseReto(id){const r=S.retos.find(x=>x.id===id);if(!r)return;
+  if(await escribir(()=>S.db.doc(`retos/${id}/participantes/${S.me}`).set({alias:(S.perfil?.alias||S.meName||'Cliente').slice(0,40),valor:valorReto(r,S.hist),act:Date.now()}),'¡Te uniste al reto!'))verRanking(id)}
+async function salirReto(id){if(await escribir(()=>S.db.doc(`retos/${id}/participantes/${S.me}`).delete(),'Saliste del reto')){cerrarHoja();cortar('ranking')}}
+function actualizarRetos(H){for(const r of S.retos||[])if(retoActivo(r)&&S.retoYo?.[r.id])S.db.doc(`retos/${r.id}/participantes/${S.me}`).update({valor:valorReto(r,H),act:Date.now()}).catch(()=>{})}
+function verRanking(id){const r=S.retos.find(x=>x.id===id);if(!r)return;cortar('ranking');
+  const pintar=L=>{if(!$('#sheet')||$('#sheet').hidden&&L!==null)return;const t=TRETO[r.tipo]||TRETO.entrenos;
+    abrirHoja(`<div class="row between"><h2>${esc(r.titulo)}</h2><button class="iconbtn" onclick="cerrarHoja();cortar('ranking')" aria-label="Cerrar">${IC.x}</button></div>
+     <div class="body"><span class="small">${fecha(r.desde)} al ${fecha(r.hasta)} · ${t[0].toLowerCase()} · ${retoActivo(r)?restan(r):'terminado'}</span>
+     ${L===null?'<div class="cargando">Cargando…</div>':L.length?L.map((p,i)=>`<div class="list-row" style="${p.id===S.me?'background:var(--raise);border-radius:12px;padding-inline:8px':''}"><b class="num" style="width:28px;color:${i<3?'var(--gold)':'var(--muted)'}">${i+1}</b>${avatar(p.alias,'avatar')}<span class="grow">${esc(p.alias)}${p.id===S.me?' (tú)':''}</span><b class="num">${kg(p.valor)} <span class="tiny">${t[1]}</span></b></div>`).join(''):'<div class="empty">Todavía nadie se une.</div>'}
+     ${S.modo==='cliente'&&S.retoYo?.[id]?`<button class="btn ghost block" onclick="salirReto(${J(id)})">Salir del reto</button>`:''}</div>`)};
+  pintar(null);sub('ranking',S.db.collection(`retos/${id}/participantes`).orderBy('valor','desc').limit(30),s=>pintar(docs(s)))}
+/* Coach: crear y borrar retos */
+function cardRetosCoach(){const R=[...(S.retos||[])].sort((a,b)=>b.hasta-a.hasta);
+  return `<section class="card"><div class="row between"><b>Retos del gimnasio</b><button class="btn sm primary" onclick="nuevoReto()">+ Nuevo reto</button></div>
+   ${R.length?R.map(r=>`<div class="list-row"><div class="grow"><b>${esc(r.titulo)}</b><div class="small">${fecha(r.desde)} al ${fecha(r.hasta)} · ${retoActivo(r)?restan(r):r.desde>Date.now()?'aún no empieza':'terminado'}</div></div><button class="btn sm ghost" onclick="verRanking(${J(r.id)})">Ranking</button><button class="iconbtn" onclick="borrarReto(${J(r.id)},this)" aria-label="Borrar ${esc(r.titulo)}">${IC.x}</button></div>`).join(''):'<span class="small">Crea un reto para motivar a tus clientes. Cada uno decide si se une, y compiten en un ranking.</span>'}</section>`}
+function nuevoReto(){const iso=t=>{const d=new Date(t);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};S.retoTipo='entrenos';
+  abrirHoja(`<div class="row between"><h2>Nuevo reto</h2><button class="iconbtn" onclick="cerrarHoja()" aria-label="Cerrar">${IC.x}</button></div>
+   <form class="body" onsubmit="crearReto(event)"><div class="field"><label class="lbl" for="rt-t">Nombre del reto</label><input class="input" id="rt-t" required maxlength="60" placeholder="Ej: Noviembre sin fallar"></div>
+   <span class="lbl">Gana quien tenga</span><div class="chips" id="rt-tipos">${Object.entries(TRETO).map(([k,v])=>`<button type="button" class="chip" aria-pressed="${k==='entrenos'}" onclick="S.retoTipo='${k}';document.querySelectorAll('#rt-tipos .chip').forEach(b=>b.setAttribute('aria-pressed',b===this))">${v[0]}</button>`).join('')}</div>
+   <div class="grid2"><div class="field"><label class="lbl" for="rt-d">Desde</label><input class="input" id="rt-d" type="date" required value="${iso(Date.now())}"></div><div class="field"><label class="lbl" for="rt-h">Hasta</label><input class="input" id="rt-h" type="date" required value="${iso(Date.now()+29*DIA)}"></div></div>
+   <button class="btn primary go">Crear reto</button></form>`)}
+async function crearReto(ev){ev.preventDefault();const p=v=>{const[y,m,d]=v.split('-').map(Number);return new Date(y,m-1,d).getTime()};
+  const desde=p($('#rt-d').value),hasta=finDia(p($('#rt-h').value));if(hasta<desde)return toast('La fecha final debe ser después de la inicial');
+  if(await escribir(()=>S.db.doc('retos/t'+uid()).set({titulo:$('#rt-t').value.trim().slice(0,60),tipo:S.retoTipo||'entrenos',desde,hasta,creado:Date.now()}),'Reto creado. Tus clientes ya lo ven en «Hoy».'))cerrarHoja()}
+async function borrarReto(id,b){if(!b.dataset.ok){b.dataset.ok=1;b.style.color='var(--danger)';toast('Toca otra vez la ✕ para borrar el reto');return}
+  await escribir(async()=>{const q=await S.db.collection(`retos/${id}/participantes`).get();for(const d of q.docs)await d.ref.delete();await S.db.doc('retos/'+id).delete()},'Reto borrado')}
+function suscribirRetos(){sub('modo',S.db.collection('retos'),s=>{S.retos=docs(s);cortar('retos');S.retoYo={};
+  if(S.modo==='cliente')for(const r of S.retos.filter(x=>x.hasta>=Date.now()-3*DIA))sub('retos',S.db.doc(`retos/${r.id}/participantes/${S.me}`),d=>{S.retoYo={...S.retoYo,[r.id]:d.exists}})})}
+
 /* ================= Chat (cliente y coach) ================= */
 function marcarVisto(cid){const v=ls.get('gf-visto',{});v[cid]=Date.now();ls.set('gf-visto',v)}
 function hiloHTML(lista){return lista.length?`<div class="msgs" id="msgs">${lista.map(m=>`<div class="msg ${m.de===S.me?'yo':'otro'}">${esc(m.texto)}<small>${hace(m.fecha)}</small></div>`).join('')}</div>`:'<div class="empty">Todavía no hay mensajes. Escribe el primero.</div>'}
@@ -920,6 +1058,7 @@ function vCoach(){
   marcarVisto(S.me);const nom=S.coachNombre||'Tu coach';
   return `<div class="stack" style="padding-top:12px"><div class="row">${avatar(nom,'avatar lg')}<div class="grow"><span class="small">Tu coach</span><h1 style="font-size:26px">${esc(nom)}</h1></div></div>
    ${S.asig.length?`<section class="card"><b>Rutinas que te asignó</b>${S.asig.map(a=>`<div class="list-row"><div class="grow"><b>${esc(a.nombre)}</b><div class="small">${(a.ejercicios||[]).length} ejercicios${a.dias?.length?' · '+a.dias.map(d=>NOMDIA[d]).join(', '):''}</div></div>${S.ses?'':`<button class="btn sm primary" onclick="iniciar('asig',${J(a.id)})">Empezar</button>`}</div>`).join('')}</section>`:''}
+   ${tarjetaSinpe()}${tarjetaRetos()}
    <section class="card"><b>Mensajes</b>${hiloHTML(S.msgs)}${cajaMsg(S.me)}</section></div>`}
 
 /* Resumen que la app del cliente calcula al guardar un entreno, para que el coach vea tendencias
@@ -937,7 +1076,8 @@ function detalleLinea(c){if(!c.ultimo)return c.alta?`Se unió ${hace(c.alta)}`:'
 const semanaDe=c=>c.tend?.sem?.ini===lunes(Date.now())?c.tend.sem.n:0;
 const estancado=c=>!!c.tend?.estanc?.length&&c.ultimo&&dias(c.ultimo)<30;
 const progresa=c=>(c.tend?.prs30||0)>0&&c.ultimo&&dias(c.ultimo)<30;
-const atencion=c=>!c.ultimo||dias(c.ultimo)>=7||estancado(c)||(c.id!==S.me&&pago(accesoDe(c.id)).k==='venc');
+const conDolor=c=>!!dolorDe(c)&&dias(c.dolor.fecha)<30;
+const atencion=c=>!c.ultimo||dias(c.ultimo)>=7||estancado(c)||conDolor(c)||!!c.compPend||(c.id!==S.me&&pago(accesoDe(c.id)).k==='venc');
 function lineaTend(c){const t=c.tend;if(!t||!c.ultimo)return'';const p=[`${semanaDe(c)} esta semana`];
   if(t.prs30)p.push(`${t.prs30} récord${t.prs30>1?'s':''} en 30 días`);
   return `<span class="small" style="display:block">${p.join(' · ')}${estancado(c)?` · <span style="color:var(--warn)">estancado en ${esc(t.estanc[0])}${t.estanc.length>1?' y '+(t.estanc.length-1)+' más':''}</span>`:''}</span>`}
@@ -951,8 +1091,9 @@ function vClientes(){const C=S.clientes;pedirNombres(C.map(c=>c.id));
     <div class="row" style="flex-wrap:wrap;gap:8px"><button class="btn primary sm" onclick="compartirLink()">Compartir enlace</button><button class="btn ghost sm" onclick="copiarLink()">Copiar enlace</button></div></section>
    <div class="grid3"><div class="tile"><span class="big">${C.length}</span><span class="tiny">Clientes</span></div><div class="tile"><span class="big" style="color:var(--accent)">${activos}</span><span class="tiny">Entrenaron hoy o ayer</span></div><div class="tile"><span class="big" style="color:var(--warn)">${nAt}</span><span class="tiny">Necesitan atención</span></div></div>
    <div class="chips" role="group" aria-label="Filtro de clientes">${Object.entries(F).map(([k,[,l,n]])=>`<button class="chip" aria-pressed="${(S.filtro||'todos')===k}" onclick="S.filtro='${k}';render()">${l} · ${n}</button>`).join('')}</div>`;
-  h+=lista.length?`<div class="stack s8">${lista.map(c=>{const [t,k]=estado(c),n=nombreCliente(c);return `<button class="card" style="padding:12px;border:0;text-align:left;color:var(--fg);flex-direction:row;align-items:center" onclick="abrirCliente(${J(c.id)})">${avatar(n)}<span class="grow" style="min-width:0"><b style="display:block">${esc(n)}${c.id===S.me?' (tú)':''}</b><span class="small" style="display:block">${esc(detalleLinea(c))}</span>${lineaTend(c)}</span><span class="pills"><span class="pill ${k}">${t}</span>${estancado(c)?'<span class="pill alerta">Estancado</span>':''}${pillPago(c.id)}</span></button>`}).join('')}</div>`
+  h+=lista.length?`<div class="stack s8">${lista.map(c=>{const [t,k]=estado(c),n=nombreCliente(c);return `<button class="card" style="padding:12px;border:0;text-align:left;color:var(--fg);flex-direction:row;align-items:center" onclick="abrirCliente(${J(c.id)})">${avatar(n)}<span class="grow" style="min-width:0"><b style="display:block">${esc(n)}${c.id===S.me?' (tú)':''}</b><span class="small" style="display:block">${esc(detalleLinea(c))}</span>${lineaTend(c)}</span><span class="pills"><span class="pill ${k}">${t}</span>${estancado(c)?'<span class="pill alerta">Estancado</span>':''}${conDolor(c)?'<span class="pill mal">Dolor</span>':''}${c.compPend?'<span class="pill ok">Comprobante</span>':''}${pillPago(c.id)}</span></button>`}).join('')}</div>`
     :`<div class="empty">${C.length?(S.filtro==='progresan'?'Nadie tiene récords en los últimos 30 días todavía.':'Nadie necesita atención. ¡Todos van al día!'):'Aún no tienes clientes. Cuando un cliente abra Genefit por primera vez, aparece aquí.'}</div>`;
+  h+=cardRetosCoach();
   return h+`</div>${S.plantillas.length&&C.length?`<button class="btn primary fab" onclick="elegirPlantilla()">${IC.mas} Asignar rutina</button>`:''}`}
 function compartirLink(){if(navigator.share)navigator.share({title:'Genefit',text:'Entra a Genefit para ver tu rutina:',url:APP_URL}).catch(()=>{});else copiarLink()}
 function copiarLink(){const ok=()=>toast('Enlace copiado');try{navigator.clipboard.writeText(APP_URL).then(ok,()=>toast(APP_URL))}catch(e){toast(APP_URL)}}
@@ -975,8 +1116,10 @@ function vClienteDet(){const d=S.det,c=S.clientes.find(x=>x.id===d.id)||{id:d.id
    <div class="tabs" role="tablist" style="grid-template-columns:repeat(3,minmax(0,1fr))">${DTABS.map(([x,l])=>`<button class="chip" role="tab" aria-selected="${tab===x}" aria-pressed="${tab===x}" onclick="S.detTab='${x}';render()">${l}</button>`).join('')}</div>`;
   h+=({resumen:detResumen,progreso:detProgreso,cuerpo:detCuerpo}[tab]||detResumen)(d,c,n);
   return h+'</div>'}
-function detResumen(d,c,n){
-  let h=`<section class="card"><b>Rutinas asignadas</b>${d.asig.length?d.asig.map(a=>`<div class="list-row"><div class="grow"><b>${esc(a.nombre)}</b><div class="small">${(a.ejercicios||[]).length} ejercicios · ${a.dias?.length?a.dias.map(x=>NOMDIA[x]).join(', '):'en rotación'}${a.nota?' · «'+esc(a.nota)+'»':''}</div></div><button class="btn sm ghost" onclick="editarRutina(${J(a.id)},'asignada')">Ajustar</button><button class="iconbtn" onclick="desasignar(${J(d.id)},${J(a.id)},this)" aria-label="Quitar ${esc(a.nombre)}">${IC.x}</button></div>`).join('')+'<span class="small">«Ajustar» cambia la rutina solo para este cliente; tu plantilla queda igual.</span>':'<span class="small">Sin rutinas asignadas. Asígnale una para que la vea en «Hoy».</span>'}</section>`;
+function detResumen(d,c,n){const dl=dolorDe(c),a=accesoDe(d.id);
+  let h=dl?`<section class="card line" style="border-color:var(--danger)"><div class="row between"><b>Reporta dolor</b><span class="small">${hace(dl.fecha)}</span></div><div style="max-width:240px;margin:0 auto;width:100%">${mapaMusculos([],{color:m=>dl.z[m]?COLD[dl.z[m]]:'var(--m-off)'})}</div><span class="small" style="color:var(--fg)">${esc(zonasTxt(dl.z))}</span>${dl.nota?`<span class="small">«${esc(dl.nota)}»</span>`:''}<span class="small">En sus entrenos le marcamos los ejercicios que cargan esas zonas y le damos alternativas.</span></section>`:'';
+  if(d.id!==S.me)h+=`<section class="card"><div class="row between"><b>Progresión automática</b><button class="switch" role="switch" aria-checked="${a?.progAuto!==false}" aria-label="Progresión automática" onclick="toggleProg(${J(d.id)},${a?.progAuto===false})"><i></i></button></div><span class="small">${a?.progAuto!==false?'Al empezar cada entreno, la app le sugiere subir el peso cuando completó las reps con RPE 8 o menos.':'Apagada: usa siempre el peso que pusiste en la rutina.'}</span></section>`;
+  h+=`<section class="card"><b>Rutinas asignadas</b>${d.asig.length?d.asig.map(a=>`<div class="list-row"><div class="grow"><b>${esc(a.nombre)}</b><div class="small">${(a.ejercicios||[]).length} ejercicios · ${a.dias?.length?a.dias.map(x=>NOMDIA[x]).join(', '):'en rotación'}${a.nota?' · «'+esc(a.nota)+'»':''}</div></div><button class="btn sm ghost" onclick="editarRutina(${J(a.id)},'asignada')">Ajustar</button><button class="iconbtn" onclick="desasignar(${J(d.id)},${J(a.id)},this)" aria-label="Quitar ${esc(a.nombre)}">${IC.x}</button></div>`).join('')+'<span class="small">«Ajustar» cambia la rutina solo para este cliente; tu plantilla queda igual.</span>':'<span class="small">Sin rutinas asignadas. Asígnale una para que la vea en «Hoy».</span>'}</section>`;
   h+=`<section class="card"><b>Últimos entrenamientos</b>${d.hist.length?d.hist.slice(0,10).map(x=>`<details class="hrow"><summary><div class="grow"><b>${esc(x.titulo)}</b>${x.prs?.length?' <span class="pill pr">'+x.prs.length+' récord'+(x.prs.length>1?'s':'')+'</span>':''}<div class="small">${new Date(x.fecha).toLocaleDateString('es-CR',{weekday:'short',day:'numeric',month:'short'})} · ${x.min} min · ${x.series} series · ${kg(x.volumen)} kg</div>${x.nota?`<div class="small" style="color:var(--fg)">«${esc(x.nota)}»</div>`:''}</div></summary>
      <div class="small" style="line-height:1.6">${(x.detalle||[]).map(e=>`<b style="color:var(--fg)">${esc(e.nombre)}</b> ${esc(setsTxt(e.sets))}`).join('<br>')}</div>
      <button class="btn sm ghost" style="margin:8px 0 10px" onclick="comentarEntreno(${J(d.id)},${J(x.titulo)},${x.fecha})">${IC.chat} Comentar este entreno</button></details>`).join(''):'<span class="small">Todavía no registra entrenamientos.</span>'}</section>`;
@@ -1001,6 +1144,7 @@ function detProgreso(d,c){const H=d.hist,w=porSemana(H),k=S.semVar||'entrenos',L
 function detCuerpo(d,c){
   return `<section class="card"><b>Medidas y fotos</b>${c.compartir?(lineaPeso(d.med)||(d.med.length?'':'<span class="small">Aún no registra medidas.</span>'))+(d.fotos.length?`<div class="thumbs">${[...d.fotos].reverse().slice(0,9).map(f=>`<div class="thumb"><img src="${esc(f.img)}" alt="Foto de ${esc(f.pose||'')} del ${fecha(f.fecha)}" loading="lazy"><span class="cap">${esc(f.pose||'')} · ${fecha(f.fecha)}</span></div>`).join('')}</div>`:''):'<span class="small">Tu cliente no comparte sus medidas ni fotos. Puede activarlo en su sección Progreso.</span>'}</section>`}
 function comentarEntreno(cid,titulo,f){BORR[cid]=`Sobre tu entreno «${titulo}» del ${fecha(f)}: `;abrirChat(cid);setTimeout(()=>{const i=$('#msgIn');if(!i)return;i.focus();i.setSelectionRange(i.value.length,i.value.length)},50)}
+async function toggleProg(cid,on){await escribir(()=>S.db.doc('acceso/'+cid).set({progAuto:on,alias:aliasDe(cid)},{merge:true}),on?'Progresión automática activada':'Progresión automática apagada')}
 async function desasignar(cid,aid,b){if(!b.dataset.ok){b.dataset.ok=1;b.style.color='var(--danger)';toast('Toca otra vez la ✕ para quitar la rutina');return}
   await escribir(()=>S.db.doc(`clientes/${cid}/asignadas/${aid}`).delete(),'Rutina quitada')}
 
@@ -1024,10 +1168,12 @@ function vBloqueado(){const r=restringido(),a=S.acceso||{},nom=S.coachNombre||'t
     eliminado:`${esc(nom)} ya no tiene tu cuenta activa en Genefit. Si crees que es un error, contáctalo directamente.`}[r];
   return `<div class="stack" style="padding-top:28px"><span class="pill mal" style="align-self:flex-start">${r==='vencido'?'Pago pendiente':r==='suspendido'?'Acceso en pausa':'Cuenta desactivada'}</span>
    <h1 style="font-size:38px;line-height:1">${tit}</h1><p class="small" style="font-size:16px">${txt}</p>
+   ${r==='vencido'?tarjetaSinpe():''}
    ${r!=='eliminado'&&S.perfil?`<section class="card"><b>Escríbele a ${esc(nom)}</b>${hiloHTML(S.msgs)}${cajaMsg(S.me)}</section>`:''}</div>`}
-function cardPago(cid,n){const a=accesoDe(cid),p=pago(a);
+function cardPago(cid,n){const a=accesoDe(cid),p=pago(a),cc=S.clientes.find(x=>x.id===cid);
+  const pend=cc?.compPend?`<div class="card line" style="border-color:var(--accent);flex-direction:row;align-items:center;padding:12px"><div class="grow"><b>Comprobante de SINPE por revisar</b><div class="small">${cc.compPend.monto?colones(cc.compPend.monto)+' · ':''}${hace(cc.compPend.fecha)}</div></div><button class="btn sm primary" onclick="revisarComp(${J(cid)})">Revisar</button></div>`:'';
   if(S.sinReglasAcceso)return `<section class="card line" style="border-color:var(--warn)"><b>Mensualidad</b><span class="small">Para cobrar mensualidades falta pegar las reglas nuevas de Firestore en la consola de Firebase.</span></section>`;
-  return `<section class="card"><div class="row between"><b>Mensualidad</b><span class="pill ${p.cls}">${p.t}</span></div>
+  return pend+`<section class="card"><div class="row between"><b>Mensualidad</b><span class="pill ${p.cls}">${p.t}</span></div>
    <span class="small">${a?.pagoHasta?`Pagado hasta el <b style="color:var(--fg)">${fechaLarga(a.pagoHasta)}</b>`:'Todavía no le registras ningún pago. Mientras tanto tiene acceso libre.'}${a?.ultPago?` · último pago registrado ${hace(a.ultPago)}`:''}</span>
    <div class="grid2"><button class="btn primary" onclick="registrarPago(${J(cid)})">Pagó: +1 mes</button><button class="btn ghost" onclick="abrirFecha(${J(cid)})">Cambiar fecha</button></div>
    ${a?.bloqueado?`<button class="btn ghost block" onclick="suspender(${J(cid)},false)">Reactivar acceso</button>`:`<button class="btn danger block" onclick="suspender(${J(cid)},true,this)">Suspender acceso ya</button>`}
@@ -1060,6 +1206,9 @@ function vPagos(){const C=S.clientes.filter(c=>c.id!==S.me).map(c=>({id:c.id,n:n
   const ids=new Set(C.map(c=>c.id));const fuera=S.accesos.filter(a=>a.bloqueado&&!ids.has(a.id));
   const cuenta=k=>C.filter(c=>c.p.k===k).length;
   let h=`<div class="stack" style="padding-top:12px"><div><span class="small">Panel del entrenador</span><h1>Mensualidades</h1></div>`;
+  const comp=S.clientes.filter(c=>c.compPend&&c.id!==S.me);
+  if(comp.length)h+=`<span class="lbl">Comprobantes por revisar · ${comp.length}</span><div class="stack s8">${comp.map(filaComp).join('')}</div>`;
+  h+=cardSinpeCoach();
   if(S.sinReglasAcceso)return h+`<section class="card line" style="border-color:var(--warn)"><b>Falta un paso en Firebase</b><span class="small">Para controlar pagos hay que pegar las reglas nuevas de Firestore en la consola de Firebase (Firestore → Reglas → Publicar).</span></section></div>`;
   h+=`<div class="grid3"><div class="tile"><span class="big" style="color:var(--accent)">${cuenta('ok')}</span><span class="tiny">Al día</span></div><div class="tile"><span class="big" style="color:var(--warn)">${cuenta('pronto')}</span><span class="tiny">Vencen en 5 días</span></div><div class="tile"><span class="big" style="color:var(--danger)">${cuenta('venc')}</span><span class="tiny">Vencidos</span></div></div>`;
   const orden={venc:0,pronto:1,sin:2,susp:3,ok:4};

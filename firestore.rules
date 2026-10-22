@@ -35,8 +35,11 @@ service cloud.firestore {
       // Solo se puede reclamar una vez, y solo para uno mismo.
       allow create: if dentro() && datos().uid == request.auth.uid
         && datos().keys().hasOnly(['uid', 'nombre']) && texto(datos().nombre, 40);
-      allow update: if esCoach() && datos().keys().hasOnly(['uid', 'nombre'])
-        && datos().uid is string && texto(datos().nombre, 40);
+      // El coach también guarda aquí sus datos de cobro por SINPE Móvil (los ven sus clientes para pagarle).
+      allow update: if esCoach() && datos().keys().hasOnly(['uid', 'nombre', 'sinpe', 'monto', 'titular'])
+        && datos().uid is string && texto(datos().nombre, 40)
+        && texto(datos().get('sinpe', ''), 12) && texto(datos().get('titular', ''), 60)
+        && (!('monto' in datos()) || numero(datos().monto));
       allow delete: if false;
     }
 
@@ -60,7 +63,7 @@ service cloud.firestore {
     // ---------- Ficha de cada cliente (lo que su coach puede ver) ----------
     match /clientes/{uid} {
       function camposCliente() {
-        return ['alias', 'alta', 'compartir', 'v', 'ultimo', 'ultTitulo', 'ultMin', 'ultPRs', 'ultVol', 'ultMsg', 'sexo', 'tend'];
+        return ['alias', 'alta', 'compartir', 'v', 'ultimo', 'ultTitulo', 'ultMin', 'ultPRs', 'ultVol', 'ultMsg', 'sexo', 'tend', 'compPend', 'dolor'];
       }
       function sexoValido() { return !('sexo' in datos()) || datos().sexo in ['m', 'f']; }
       // El último mensaje solo lo puede poner quien lo escribió (si no cambia, no se revisa).
@@ -75,7 +78,7 @@ service cloud.firestore {
       // Solo se revisan los campos que cambian, para no trabar fichas antiguas con campos viejos.
       allow update: if (soy(uid) && !eliminado(uid)
           && cambia().hasOnly(camposCliente()) && texto(datos().get('alias', ''), 40) && ultMsgValido() && sexoValido())
-        || (esCoach() && cambia().hasOnly(['ultMsg']) && ultMsgValido());
+        || (esCoach() && cambia().hasOnly(['ultMsg', 'compPend']) && ultMsgValido());
       allow delete: if esCoach();
 
       // Entrenos y récords: los escribe el cliente, los lee también el coach.
@@ -111,6 +114,19 @@ service cloud.firestore {
         allow write: if esCoach();
       }
 
+      // Comprobantes de pago por SINPE: el cliente los sube (aunque su mensualidad esté vencida),
+      // solo el coach los aprueba o rechaza.
+      match /comprobantes/{id} {
+        allow read: if soy(uid) || esCoach();
+        allow create: if soy(uid) && !eliminado(uid) && datos().estado == 'pendiente'
+          && datos().keys().hasOnly(['img', 'ref', 'monto', 'fecha', 'estado'])
+          && datos().img is string && datos().img.matches('^data:image/(jpeg|png|webp);base64,.*')
+          && datos().img.size() < 900000 && texto(datos().ref, 40) && numero(datos().monto) && numero(datos().fecha);
+        allow update: if esCoach() && cambia().hasOnly(['estado', 'revisado'])
+          && datos().estado in ['aprobado', 'rechazado'];
+        allow delete: if esCoach();
+      }
+
       // Chat cliente ↔ coach. Nadie puede escribir a nombre de otro ni editar mensajes.
       match /mensajes/{id} {
         allow read: if soy(uid) || esCoach();
@@ -118,6 +134,20 @@ service cloud.firestore {
           && datos().de == request.auth.uid && texto(datos().texto, 500) && numero(datos().fecha);
         allow update: if false;
         allow delete: if esCoach();
+      }
+    }
+
+    // ---------- Retos del gimnasio ----------
+    // El coach los crea. Cada cliente decide si se une; en el ranking solo va su nombre y su número.
+    match /retos/{id} {
+      allow read: if dentro();
+      allow write: if esCoach();
+      match /participantes/{p} {
+        allow read: if dentro();
+        allow create, update: if soy(p) && !eliminado(p) && exists(/databases/$(database)/documents/retos/$(id))
+          && datos().keys().hasOnly(['alias', 'valor', 'act']) && texto(datos().alias, 40)
+          && numero(datos().valor) && numero(datos().act);
+        allow delete: if soy(p) || esCoach();
       }
     }
 

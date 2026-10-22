@@ -96,6 +96,10 @@ try {
   // Etapa 3: segundo entreno y estadísticas
   await K.evaluate(() => iniciar('asig', S.asig[0].id));
   await ver(K, 'Agregar serie');
+  const sg = await K.evaluate(() => [S.ses.ejercicios[0].sug?.accion, S.ses.ejercicios[0].sets[1].kg]);
+  if (sg[0] !== 'sube' || sg[1] !== 62.5) problemas.push('Progresión automática: esperaba subir a 62,5 y dio ' + JSON.stringify(sg));
+  await ver(K, 'Sube 2,5 kg');
+  await foto(K, 'progresion');
   await K.evaluate(() => { S.ses.ejercicios[0].sets[0].kg = 65; marcar(0, 0); marcar(0, 1); S.ses.descFin = 0; abrirTerminar(); });
   await K.click('#btnGuardar');
   await K.waitForFunction(() => !S.ses && S.hist.length === 2, null, { timeout: 15000 });
@@ -171,15 +175,70 @@ try {
   if (JSON.stringify(t.estanc) !== '["Sentadilla"]') problemas.push('No detectó estancamiento: ' + JSON.stringify(t));
   await C.evaluate(() => { const c = S.clientes.find(x => x.alias === 'Ana Pérez'); abrirCliente(c.id); });
 
-  // 6. Pago vencido corta el acceso
-  await C.evaluate(() => { cerrarChat(); });
+  // Únicas: mapa de dolor
+  await K.evaluate(() => { irA('hoy'); });
+  await K.getByRole('button', { name: /¿Te duele algo\?/ }).click();
+  await ver(K, '¿Dónde te duele?');
+  await K.getByRole('button', { name: /^hombros/ }).click();
+  await K.getByRole('button', { name: /^hombros/ }).click();
+  await K.fill('#dnota', 'Molestia al empujar');
+  await foto(K, 'dolor-mapa');
+  await K.getByRole('button', { name: 'Guardar' }).click();
+  await ver(K, 'hombros (moderado)');
+  await ver(K, 'cargan zonas donde te duele');
+  await K.evaluate(() => iniciar('asig', S.asig[0].id));
+  await ver(K, 'donde te duele.');
+  await foto(K, 'dolor-sesion');
+  const iAviso = await K.evaluate(() => S.ses.ejercicios.findIndex(e => enRiesgo(e.nombre).length));
+  await K.evaluate(i => verAlternativas(i), iAviso);
+  await K.locator('#sheet .pick').first().click();
+  const sigue = await K.evaluate(i => enRiesgo(S.ses.ejercicios[i].nombre).length, iAviso);
+  if (sigue) problemas.push('La alternativa también carga la zona con dolor');
+  await K.evaluate(() => { S.ses = null; guardarSes(); S.vista = null; render(); });
+  await C.evaluate(() => { const c = S.clientes.find(x => x.alias === 'Ana Pérez'); abrirCliente(c.id); });
+  await ver(C, 'Reporta dolor');
+  await ver(C, 'Molestia al empujar');
+
+  // Únicas: retos
+  await C.evaluate(() => { cerrarCliente(); irA('clientes'); });
+  await C.getByRole('button', { name: '+ Nuevo reto' }).click();
+  await C.fill('#rt-t', 'Noviembre sin fallar');
+  await C.getByRole('button', { name: 'Crear reto' }).click();
+  await ver(C, 'Reto creado');
+  await K.evaluate(() => irA('hoy'));
+  await ver(K, 'Noviembre sin fallar');
+  await K.getByRole('button', { name: 'Unirme' }).click();
+  await ver(K, 'Ana Pérez (tú)');
+  await foto(K, 'reto-ranking');
+  await K.evaluate(() => cerrarHoja());
+  await C.getByRole('button', { name: 'Ranking' }).first().click();
+  await ver(C, 'Ana Pérez');
+  await C.evaluate(() => cerrarHoja());
+
+  // 6. Pago vencido corta el acceso, y se paga por SINPE con comprobante
+  await C.evaluate(() => irA('pagos'));
+  await C.fill('#sp-tel', '8888-1234'); await C.fill('#sp-monto', '25000'); await C.fill('#sp-tit', 'Gene Fit');
+  await C.getByRole('button', { name: 'Guardar datos de cobro' }).click();
+  await ver(C, 'Datos de cobro guardados');
+  await C.evaluate(() => { const c = S.clientes.find(x => x.alias === 'Ana Pérez'); abrirCliente(c.id); });
   await C.getByText('Pagó: +1 mes').click();
   await ver(C, 'Pago registrado');
   await C.evaluate(() => { const c = S.clientes.find(x => x.alias === 'Ana Pérez'); return S.db.doc('acceso/' + c.id).set({ pagoHasta: Date.now() - 1000 }, { merge: true }); });
   await ver(K, 'Tu mensualidad venció');
+  await ver(K, '8888-1234'); await ver(K, '₡25');
   await foto(K, 'vencido');
-  await C.getByText('Pagó: +1 mes').click();
-  await ver(K, 'Rutinas que te asignó');
+  await K.fill('#comp-ref', '2026102299887766');
+  await K.setInputFiles('#comp-in', { name: 'comprobante.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64') });
+  await ver(K, 'lo está revisando');
+  await ver(C, 'Comprobante de SINPE por revisar');
+  await C.getByRole('button', { name: 'Revisar' }).first().click();
+  await ver(C, '2026102299887766');
+  await foto(C, 'revisar-comprobante');
+  await C.getByRole('button', { name: /^Aprobar/ }).click();
+  await ver(C, 'Pago registrado');
+  await ver(K, 'Hola, Ana');
+  const est = await K.evaluate(() => S.comp[0]?.estado);
+  if (est !== 'aprobado') problemas.push('El comprobante no quedó aprobado: ' + est);
 
   // 7. Salir borra los datos del teléfono
   await K.evaluate(() => iniciar('libre'));

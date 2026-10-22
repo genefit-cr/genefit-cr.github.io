@@ -12,11 +12,16 @@ Esta guía explica cómo están protegidos y los pasos que hay que hacer **una v
 | Medidas, fotos y rutinas **privadas** | ✅ | ❌ | ❌ | ❌ |
 | Mensualidad (acceso) | solo ver | ✅ | ❌ | ❌ |
 | Plantillas de rutinas del coach | ❌ | ✅ | ❌ | ❌ |
+| Comprobantes de pago SINPE | ✅ (los sube) | ✅ (los aprueba) | ❌ | ❌ |
+| Zonas de dolor que reporta | ✅ | ✅ | ❌ | ❌ |
+| Su nombre y número en un reto (solo si se une) | ✅ | ✅ | ✅ | ❌ |
+| Número SINPE y monto del coach | ✅ | ✅ | ✅ | ❌ |
 
 Además:
 - Nadie puede hacerse pasar por el coach ni escribir mensajes a nombre de otra persona.
 - Los mensajes no se pueden editar después de enviados.
-- Un cliente no puede ponerse al día con el pago a sí mismo.
+- Un cliente no puede ponerse al día con el pago a sí mismo ni aprobar su propio comprobante.
+- En los retos nadie puede inscribir a otra persona ni publicar más que su nombre y su número.
 - Un cliente eliminado ya no puede escribir en su ficha.
 - Las fotos solo se aceptan como imagen guardada dentro de Genefit (no enlaces externos).
 - Al tocar **Salir** se borra del teléfono la copia de los datos y el entreno en curso,
