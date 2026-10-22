@@ -26,9 +26,10 @@ async function nueva(nombre) {
 }
 const ver = async (p, texto, ms = 15000) => { try { await p.getByText(texto, { exact: false }).first().waitFor({ timeout: ms }); } catch (e) { await p.screenshot({ path: OUT + "/fallo.png" }); throw new Error("No apareció: " + texto + " | pantalla: " + (await p.innerText("body")).slice(0, 300).replace(/\n/g, " / ")); } };
 async function foto(p, n) { await p.screenshot({ path: `${OUT}/e2e-${String(++paso).padStart(2, '0')}-${n}.png` }); }
-async function crearCuenta(p, nombre, mail) {
+async function crearCuenta(p, nombre, mail, sexo) {
   await p.getByText('Soy nuevo: crear cuenta').click();
   await p.fill('#anom', nombre); await p.fill('#amail', mail);
+  if (sexo) await p.getByRole('radio', { name: sexo }).click();
   await p.fill('#aclave', '12345678'); await p.click('#abtn');
   await ver(p, 'no sea solo números');
   await p.fill('#aclave', 'Pesas-2026!'); await p.click('#abtn');
@@ -39,7 +40,7 @@ try {
   const C = await nueva('coach');
   await ver(C, 'Tu plan.');
   await foto(C, 'login');
-  await crearCuenta(C, 'Gene', 'coach@genefit.test');
+  await crearCuenta(C, 'Gene', 'coach@genefit.test', 'Hombre');
   await ver(C, 'Configura Genefit');
   await C.getByText('Soy el coach').click();
   await ver(C, 'Mis clientes');
@@ -49,8 +50,12 @@ try {
 
   // 2. Cliente
   const K = await nueva('cliente');
-  await crearCuenta(K, 'Ana Pérez', 'ana@genefit.test');
+  await crearCuenta(K, 'Ana Pérez', 'ana@genefit.test', 'Mujer');
   await ver(K, 'Hola, Ana');
+  const temaAna = await K.evaluate(() => document.body.className);
+  if (!/tema-f/.test(temaAna)) problemas.push('Ana (mujer) no quedó en rosa: ' + temaAna);
+  const temaCoach = await C.evaluate(() => document.body.className);
+  if (/tema-/.test(temaCoach)) problemas.push('El panel del coach tomó un color de cliente: ' + temaCoach);
   await ver(K, 'Tu coach aún no te asigna rutina');
 
   // 3. Coach asigna
@@ -64,11 +69,30 @@ try {
   await ver(K, 'Empuje');
   await K.getByRole('button', { name: 'Empezar' }).first().click();
   await ver(K, 'Agregar serie');
-  await K.evaluate(() => { marcar(0, 0); marcar(0, 1); });
+  // Etapa 2: tipo de serie, RPE, superserie
+  await K.evaluate(() => menuSerie(0, 0));
+  await K.getByRole('radio', { name: 'Calentamiento' }).click();
+  await K.getByRole('button', { name: '8,5' }).click();
+  await K.getByRole('button', { name: 'Listo' }).click();
+  const et = await K.evaluate(() => [etiqueta(S.ses.ejercicios[0].sets, 0), etiqueta(S.ses.ejercicios[0].sets, 1), S.ses.ejercicios[0].sets[0].rpe]);
+  if (JSON.stringify(et) !== '["C","1",8.5]') problemas.push('Etiquetas de serie mal: ' + JSON.stringify(et));
+  await K.evaluate(() => menuEj(0));
+  await K.getByRole('button', { name: /Hacer superserie con/ }).click();
+  await K.getByRole('button', { name: 'Listo' }).click();
+  await ver(K, 'Superserie A');
+  await K.evaluate(() => marcar(0, 1));
+  const desc1 = await K.evaluate(() => S.ses.descFin);
+  if (desc1) problemas.push('En superserie no debía arrancar el descanso');
+  await K.evaluate(() => marcar(1, 0));
+  const desc2 = await K.evaluate(() => S.ses.descFin > Date.now());
+  if (!desc2) problemas.push('Al cerrar la vuelta de superserie debía arrancar el descanso');
+  await K.evaluate(() => { marcar(0, 0); marcar(0, 2); });
   await foto(K, 'sesion');
   await K.evaluate(() => abrirTerminar());
   await K.click('#btnGuardar');
   await ver(K, 'récord');
+  const guardado = await K.evaluate(() => S.hist[0]?.detalle?.[0]?.sets);
+  if (!guardado || guardado[0].t !== 'w' || guardado[0].rpe !== 8.5) problemas.push('No se guardó tipo/RPE: ' + JSON.stringify(guardado));
   // medidas privadas
   await K.evaluate(() => irA('progreso'));
   await K.fill('#m-peso', '72.5'); await K.getByText('Guardar medidas').click();
@@ -110,7 +134,8 @@ try {
   await foto(K, 'tras-salir');
   console.log('Flujo completo OK');
 } catch (e) {
-  problemas.push('FALLÓ el flujo: ' + e.message.split('\n')[0]);
+  for (const pg of b.contexts().flatMap(c => c.pages())) await pg.screenshot({ path: OUT + '/fallo-' + Math.random().toString(36).slice(2, 6) + '.png' }).catch(() => {});
+  problemas.push('FALLÓ el flujo: ' + e.message.split('\n').slice(0, 3).join(' | '));
 }
 console.log(problemas.length ? 'PROBLEMAS:\n' + problemas.join('\n') : 'Sin problemas');
 await b.close();

@@ -60,8 +60,9 @@ service cloud.firestore {
     // ---------- Ficha de cada cliente (lo que su coach puede ver) ----------
     match /clientes/{uid} {
       function camposCliente() {
-        return ['alias', 'alta', 'compartir', 'v', 'ultimo', 'ultTitulo', 'ultMin', 'ultPRs', 'ultVol', 'ultMsg'];
+        return ['alias', 'alta', 'compartir', 'v', 'ultimo', 'ultTitulo', 'ultMin', 'ultPRs', 'ultVol', 'ultMsg', 'sexo'];
       }
+      function sexoValido() { return !('sexo' in datos()) || datos().sexo in ['m', 'f']; }
       // El último mensaje solo lo puede poner quien lo escribió (si no cambia, no se revisa).
       function ultMsgValido() {
         return !('ultMsg' in datos())
@@ -70,10 +71,10 @@ service cloud.firestore {
       }
       allow read: if soy(uid) || esCoach();
       allow create: if soy(uid) && !eliminado(uid)
-        && datos().keys().hasOnly(camposCliente()) && texto(datos().alias, 40) && ultMsgValido();
+        && datos().keys().hasOnly(camposCliente()) && texto(datos().alias, 40) && ultMsgValido() && sexoValido();
       // Solo se revisan los campos que cambian, para no trabar fichas antiguas con campos viejos.
       allow update: if (soy(uid) && !eliminado(uid)
-          && cambia().hasOnly(camposCliente()) && texto(datos().get('alias', ''), 40) && ultMsgValido())
+          && cambia().hasOnly(camposCliente()) && texto(datos().get('alias', ''), 40) && ultMsgValido() && sexoValido())
         || (esCoach() && cambia().hasOnly(['ultMsg']) && ultMsgValido());
       allow delete: if esCoach();
 
