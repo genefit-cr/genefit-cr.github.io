@@ -25,7 +25,7 @@ async function nueva(nombre) {
   return p;
 }
 const ver = async (p, texto, ms = 15000) => { try { await p.getByText(texto, { exact: false }).first().waitFor({ timeout: ms }); } catch (e) { await p.screenshot({ path: OUT + "/fallo.png" }); throw new Error("No apareció: " + texto + " | pantalla: " + (await p.innerText("body")).slice(0, 300).replace(/\n/g, " / ")); } };
-async function foto(p, n) { await p.screenshot({ path: `${OUT}/e2e-${String(++paso).padStart(2, '0')}-${n}.png` }); }
+async function foto(p, n) { await p.screenshot({ path: `${OUT}/e2e-${String(++paso).padStart(2, '0')}-${n}.png`, fullPage: true }); }
 async function crearCuenta(p, nombre, mail, sexo) {
   await p.getByText('Soy nuevo: crear cuenta').click();
   await p.fill('#anom', nombre); await p.fill('#amail', mail);
@@ -93,6 +93,28 @@ try {
   await ver(K, 'récord');
   const guardado = await K.evaluate(() => S.hist[0]?.detalle?.[0]?.sets);
   if (!guardado || guardado[0].t !== 'w' || guardado[0].rpe !== 8.5) problemas.push('No se guardó tipo/RPE: ' + JSON.stringify(guardado));
+  // Etapa 3: segundo entreno y estadísticas
+  await K.evaluate(() => iniciar('asig', S.asig[0].id));
+  await ver(K, 'Agregar serie');
+  await K.evaluate(() => { S.ses.ejercicios[0].sets[0].kg = 65; marcar(0, 0); marcar(0, 1); S.ses.descFin = 0; abrirTerminar(); });
+  await K.click('#btnGuardar');
+  await K.waitForFunction(() => !S.ses && S.hist.length === 2, null, { timeout: 15000 });
+  await K.evaluate(() => { S.progTab = 'resumen'; irA('progreso'); });
+  await ver(K, 'Por semana'); await ver(K, 'Series por músculo'); await ver(K, 'Pecho');
+  await K.getByRole('button', { name: /entrenos?$/ }).first().click();
+  await ver(K, 'Empuje ·');
+  await foto(K, 'prog-resumen');
+  await K.getByRole('tab', { name: 'Ejercicios' }).click();
+  await K.getByRole('button', { name: /Press de banca/ }).first().click();
+  await ver(K, 'El 1RM estimado es');
+  const puntos = await K.locator('#gej .pt').count();
+  if (puntos !== 2) problemas.push('La gráfica del ejercicio debía tener 2 puntos y tiene ' + puntos);
+  await foto(K, 'prog-ejercicio');
+  await K.evaluate(() => { S.vista = null; S.progTab = 'historial'; render(); });
+  await K.locator('details.hrow summary').first().click();
+  await ver(K, '65×8');
+  await foto(K, 'prog-historial');
+  await K.evaluate(() => { S.progTab = 'cuerpo'; render(); });
   // medidas privadas
   await K.evaluate(() => irA('progreso'));
   await K.fill('#m-peso', '72.5'); await K.getByText('Guardar medidas').click();
