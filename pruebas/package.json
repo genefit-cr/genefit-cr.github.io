@@ -1,0 +1,13 @@
+{
+  "name": "genefit-pruebas",
+  "private": true,
+  "type": "module",
+  "description": "Pruebas de Genefit: reglas de seguridad y recorrido completo de la app contra los emuladores de Firebase.",
+  "scripts": { "test": "bash correr.sh" },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^3.0.0",
+    "firebase": "^10.12.2",
+    "firebase-tools": "^13.0.0",
+    "playwright": "^1.40.0"
+  }
+}
