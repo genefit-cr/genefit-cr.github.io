@@ -240,6 +240,22 @@ try {
   const est = await K.evaluate(() => S.comp[0]?.estado);
   if (est !== 'aprobado') problemas.push('El comprobante no quedó aprobado: ' + est);
 
+  // Eliminar y reactivar a un cliente con la mensualidad vencida
+  await C.evaluate(() => { const c = S.clientes.find(x => x.alias === 'Ana Pérez'); window.__ana = c.id; return S.db.doc('acceso/' + c.id).set({ pagoHasta: Date.now() - 1000 }, { merge: true }); });
+  await ver(K, 'Tu mensualidad venció');
+  await C.evaluate(() => { cerrarHoja(); abrirCliente(window.__ana); });
+  await C.getByRole('button', { name: 'Eliminar a Ana Pérez' }).click();
+  await C.getByRole('button', { name: /Toca otra vez para eliminar/ }).click();
+  await ver(C, 'fue eliminado');
+  await ver(K, 'Tu cuenta está desactivada');
+  await C.evaluate(() => irA('pagos'));
+  await ver(C, 'Eliminados');
+  await C.getByRole('button', { name: 'Reactivar' }).click();
+  await ver(C, 'Regístrale el pago');
+  await ver(K, 'Hola, Ana');
+  await C.evaluate(() => { S.filtro = 'todos'; irA('clientes'); });
+  await ver(C, 'Ana Pérez');
+
   // 7. Salir borra los datos del teléfono
   await K.evaluate(() => iniciar('libre'));
   await K.evaluate(() => { salir(); salir(); });
