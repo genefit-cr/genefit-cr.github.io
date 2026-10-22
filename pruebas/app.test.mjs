@@ -128,12 +128,48 @@ try {
   await C.evaluate(() => { const c = S.clientes.find(x => x.alias === 'Ana Pérez'); abrirCliente(c.id); });
   await ver(C, 'Últimos entrenamientos');
   await ver(C, 'Empuje');
+  await C.getByRole('tab', { name: 'Cuerpo' }).click();
   await ver(C, 'no comparte sus medidas');
+  await C.getByRole('tab', { name: 'Resumen' }).click();
   await foto(C, 'detalle-cliente');
   await C.evaluate(() => { const c = S.clientes.find(x => x.alias === 'Ana Pérez'); abrirChat(c.id); });
   await ver(C, 'Hola coach, ya entrené');
   await C.fill('#msgIn', '¡Bien hecho!'); await C.getByRole('button', { name: 'Enviar' }).click();
   await ver(K, '¡Bien hecho!');
+
+  // Etapa 4: el coach ve estadísticas, ajusta la rutina solo para Ana, duplica y comenta
+  await C.evaluate(() => cerrarChat());
+  await C.waitForFunction(() => S.clientes.find(x => x.alias === 'Ana Pérez')?.tend?.ses30 === 2, null, { timeout: 15000 });
+  await C.evaluate(() => { S.filtro = 'progresan'; irA('clientes'); });
+  await ver(C, 'récords en 30 días');
+  await foto(C, 'coach-lista');
+  await C.evaluate(() => { const c = S.clientes.find(x => x.alias === 'Ana Pérez'); abrirCliente(c.id); });
+  await C.getByRole('tab', { name: 'Progreso' }).click();
+  await ver(C, 'Entrenos en 30 días'); await ver(C, 'Series por músculo');
+  await foto(C, 'coach-progreso');
+  await C.getByRole('button', { name: /Press de banca/ }).first().click();
+  await ver(C, 'El 1RM estimado es');
+  await C.evaluate(() => cerrarEj());
+  await C.getByRole('tab', { name: 'Resumen' }).click();
+  await C.getByRole('button', { name: 'Ajustar' }).first().click();
+  await ver(C, 'solo para este cliente');
+  await C.fill('#e0kg', '62.5'); await C.getByText('Guardar rutina').click();
+  await ver(C, 'Rutina ajustada');
+  await K.waitForFunction(() => S.asig[0]?.ejercicios?.[0]?.kg === 62.5, null, { timeout: 15000 });
+  const plantillaIgual = await C.evaluate(() => S.plantillas.find(p => p.nombre === 'Empuje').ejercicios[0].kg);
+  if (plantillaIgual !== 60) problemas.push('Ajustar para un cliente cambió la plantilla: ' + plantillaIgual);
+  const asigBien = await K.evaluate(() => { const a = S.asig[0]; return !!a.plantilla && Array.isArray(a.dias); });
+  if (!asigBien) problemas.push('Ajustar borró los días o la plantilla de la asignación');
+  await C.locator('details.hrow summary').first().click();
+  await C.getByRole('button', { name: /Comentar este entreno/ }).click();
+  const pre = await C.inputValue('#msgIn');
+  if (!/^Sobre tu entreno «Empuje»/.test(pre)) problemas.push('El comentario no se prellenó: ' + pre);
+  await C.evaluate(() => { cerrarChat(); irA('rutinas'); });
+  await C.getByRole('button', { name: 'Duplicar' }).first().click();
+  await ver(C, '(copia)');
+  const t = await C.evaluate(() => tendencias([1, 2, 3, 4, 5].map(i => ({ fecha: Date.now() - i * DIA, prs: [], detalle: [{ nombre: 'Sentadilla', sets: [{ kg: i > 3 ? 100 : 95, reps: 5 }] }] }))));
+  if (JSON.stringify(t.estanc) !== '["Sentadilla"]') problemas.push('No detectó estancamiento: ' + JSON.stringify(t));
+  await C.evaluate(() => { const c = S.clientes.find(x => x.alias === 'Ana Pérez'); abrirCliente(c.id); });
 
   // 6. Pago vencido corta el acceso
   await C.evaluate(() => { cerrarChat(); });
