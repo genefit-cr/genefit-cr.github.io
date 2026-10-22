@@ -96,6 +96,13 @@ label.lbl{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:upp
 /* Barra de navegación */
 #nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:#121418;border-top:1px solid #22252C;padding:6px max(12px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
 #nav .in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+#nav .in.c5{grid-template-columns:repeat(5,minmax(0,1fr))}
+/* Modo coach: otra óptica */
+.rol{font-family:var(--display);font-weight:800;font-size:11px;letter-spacing:.14em;padding:4px 8px;border-radius:6px;background:var(--accent);color:var(--ink)}
+body.coach .top{border-bottom:1px solid #22252C;padding-bottom:12px;margin-bottom:4px}
+body.coach #nav{background:#0B0C0F;border-top:2px solid var(--accent)}
+.pill.mal{background:#3A1512;color:var(--danger)}
+.pills{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none}
 #nav button{background:none;border:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;color:var(--muted);font-size:12px;font-weight:600;position:relative}
 #nav button svg{width:24px;height:24px}
 #nav button[aria-current="page"]{color:var(--accent)}
@@ -183,7 +190,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 <body>
 <div class="wrap" id="app">
   <div class="top" id="top">
-    <span class="marca"><i><svg viewBox="0 0 24 24" fill="none" stroke="#0E0F12" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6v12M18 6v12M3 9v6M21 9v6M6 12h12"/></svg></i>GENEFIT</span>
+    <span class="row" style="gap:10px"><span class="marca"><i><svg viewBox="0 0 24 24" fill="none" stroke="#0E0F12" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6v12M18 6v12M3 9v6M21 9v6M6 12h12"/></svg></i>GENEFIT</span><span id="rol" class="rol" hidden>COACH</span></span>
     <span id="modoBtn"></span>
   </div>
   <main id="view"><div class="cargando">Cargando Genefit…</div></main>
@@ -237,6 +244,8 @@ const dias=t=>Math.floor((Date.now()-t)/DIA);
 function hace(t){const s=(Date.now()-t)/1000;if(s<60)return'ahora';if(s<3600)return`hace ${Math.floor(s/60)} min`;if(s<86400)return`hace ${Math.floor(s/3600)} h`;
   const d=Math.floor(s/86400);if(d<7)return d===1?'ayer':`hace ${d} días`;return new Date(t).toLocaleDateString('es-CR',{day:'numeric',month:'short'})}
 const fecha=t=>new Date(t).toLocaleDateString('es-CR',{day:'numeric',month:'short'});
+const fechaLarga=t=>new Date(t).toLocaleDateString('es-CR',{day:'numeric',month:'long',year:'numeric'});
+const finDia=t=>{const d=new Date(t);d.setHours(23,59,59,999);return d.getTime()};
 const lunes=t=>{const x=new Date(t);x.setHours(0,0,0,0);x.setDate(x.getDate()-((x.getDay()+6)%7));return x.getTime()};
 const hoyDow=()=>(new Date().getDay()+6)%7;
 const LETRAS=['L','K','M','J','V','S','D'];
@@ -260,6 +269,7 @@ const IC={
   x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>',
   mas:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
   arriba:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>',
+  pago:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h3"/></svg>',
   cam:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>'
 };
 
@@ -319,7 +329,7 @@ async function cargarPasos(e){
 /* ================= Estado ================= */
 const S={db:null,auth:null,coachNombre:'',sinCoach:false,authModo:'entrar',me:null,meName:'',esOwner:false,listo:false,sinDb:false,modo:'cliente',tab:null,vista:null,
   perfil:undefined,hist:[],recs:[],asig:[],rut:[],med:[],fotos:[],msgs:[],coachId:null,
-  clientes:[],plantillas:[],det:null,chat:null,prof:{},
+  clientes:[],plantillas:[],det:null,chat:null,prof:{},acceso:undefined,accesos:[],sinReglasAcceso:false,
   ses:ls.get('hierro2-sesion',null),draft:null,edit:null,
   libQ:'',libG:'Todos',libE:'Todo equipo',pick:null,
   pose:'Frente',cmpA:null,cmpB:null,cmpPos:50,filtro:'todos',asg:null};
@@ -328,7 +338,7 @@ const guardarSes=()=>ls.set('hierro2-sesion',S.ses);
 const BASE=()=>'clientes/'+S.me;
 const PRIV=()=>'privado/'+S.me;
 const docs=s=>s.docs.map(d=>({id:d.id,...d.data()}));
-function sub(grupo,ref,cb){try{subs[grupo].push(ref.onSnapshot(s=>{cb(s);programar()},e=>console.warn('db',e)))}catch(e){console.warn(e)}}
+function sub(grupo,ref,cb,err){try{subs[grupo].push(ref.onSnapshot(s=>{cb(s);programar()},e=>{console.warn('db',e);if(err){err(e);programar()}}))}catch(e){console.warn(e)}}
 function cortar(grupo){subs[grupo].forEach(u=>{try{u()}catch(e){}});subs[grupo]=[]}
 async function escribir(fn,ok){
   try{await fn();if(ok)toast(ok);return true}
@@ -369,8 +379,9 @@ function arrancarModo(){cortar('modo');cortar('det');cortar('chat');S.det=null;S
 async function serCoach(){const nombre=($('#cnom')?.value||S.meName||'').trim().slice(0,40)||'Coach';
   await escribir(()=>S.db.doc('config/coach').set({uid:S.me,nombre}),'¡Listo! Ya eres el coach de Genefit')}
 function suscribirCliente(){
-  S.perfil=undefined;
-  sub('modo',S.db.doc(BASE()),s=>{S.perfil=s.exists?{id:s.id,...s.data()}:null;if(!s.exists&&S.meName&&!S.creando){S.creando=true;S.db.doc(BASE()).set({alias:S.meName.slice(0,40),alta:Date.now(),compartir:false,v:2}).catch(e=>{S.creando=false;console.warn(e)})}});
+  S.perfil=undefined;S.acceso=S.esOwner?null:undefined;
+  if(!S.esOwner)sub('modo',S.db.doc('acceso/'+S.me),s=>{S.acceso=s.exists?s.data():null;crearSiFalta()},()=>{S.acceso=null;crearSiFalta()});
+  sub('modo',S.db.doc(BASE()),s=>{S.perfil=s.exists?{id:s.id,...s.data()}:null;crearSiFalta()});
   sub('modo',S.db.collection(BASE()+'/historial').orderBy('fecha','desc').limit(150),s=>S.hist=docs(s));
   sub('modo',S.db.collection(BASE()+'/records'),s=>S.recs=docs(s));
   sub('modo',S.db.collection(BASE()+'/asignadas'),s=>S.asig=docs(s).sort((a,b)=>(a.fecha||0)-(b.fecha||0)));
@@ -379,8 +390,11 @@ function suscribirCliente(){
   sub('modo',S.db.collection(PRIV()+'/medidas'),s=>S.med=docs(s).sort((a,b)=>a.fecha-b.fecha));
   sub('modo',S.db.collection(PRIV()+'/fotos'),s=>S.fotos=docs(s));
 }
+function crearSiFalta(){if(S.perfil!==null||S.acceso===undefined||restringido()||!S.meName||S.creando)return;S.creando=true;
+  S.db.doc(BASE()).set({alias:S.meName.slice(0,40),alta:Date.now(),compartir:false,v:2}).then(()=>S.creando=false,e=>{S.creando=false;console.warn(e)})}
 function suscribirCoach(){
   sub('modo',S.db.collection('clientes'),s=>S.clientes=docs(s));
+  sub('modo',S.db.collection('acceso'),s=>{S.accesos=docs(s);S.sinReglasAcceso=false},()=>{S.accesos=[];S.sinReglasAcceso=true});
   sub('modo',S.db.collection('plantillas'),s=>S.plantillas=docs(s).sort((a,b)=>(a.orden||0)-(b.orden||0)));
 }
 function cambiarModo(m){if(S.vista==='sesion'&&m==='coach'){S.vista=null}S.modo=m;ls.set('gf-modo',m);arrancarModo();render();scrollTo(0,0)}
@@ -401,15 +415,18 @@ function render(){
   else if(S.sinConfig){html=vSinConfig();nav=false}
   else if(!S.me){html=vLogin();nav=false;top=false}
   else if(S.sinCoach&&S.modo!=='coach'&&!ls.get('gf-soycliente',false)){html=vConfigCoach();nav=false}
+  else if(S.modo==='cliente'&&!S.esOwner&&S.acceso===undefined){html='<div class="cargando">Cargando tu plan…</div>';nav=false}
+  else if(S.modo==='cliente'&&restringido()){html=vBloqueado();nav=false}
   else if(S.vista==='sesion'&&S.ses){html=vSesion();nav=false;top=false}
   else if(S.vista==='editor'&&S.draft){html=vEditor();nav=false;top=false}
   else if(S.vista==='cliente'&&S.det){html=vClienteDet();nav=false;top=false}
   else if(S.vista==='chat'&&S.chat){html=vChat();nav=false;top=false}
   else if(S.modo==='cliente'&&S.perfil===undefined){html='<div class="cargando">Cargando tu plan…</div>';nav=false}
   else if(S.modo==='cliente'&&S.perfil===null){html=vBienvenida();nav=false}
-  else html=S.modo==='coach'?({clientes:vClientes,rutinas:vRutinas,ejercicios:vEjercicios,mensajes:vMensajes}[S.tab]||vClientes)():({hoy:vHoy,ejercicios:vEjercicios,progreso:vProgreso,coach:vCoach}[S.tab]||vHoy)();
+  else html=S.modo==='coach'?({clientes:vClientes,pagos:vPagos,rutinas:vRutinas,ejercicios:vEjercicios,mensajes:vMensajes}[S.tab]||vClientes)():({hoy:vHoy,ejercicios:vEjercicios,progreso:vProgreso,coach:vCoach}[S.tab]||vHoy)();
   v.innerHTML=html;
   $('#top').hidden=!top;
+  const esC=S.modo==='coach'&&S.esOwner&&!!S.me;document.body.classList.toggle('coach',esC);$('#rol').hidden=!esC;
   $('#modoBtn').innerHTML=(S.me&&S.listo?`<button class="link" style="margin-right:6px" onclick="salir()">Salir</button>`:'')+(S.esOwner&&S.listo?(S.modo==='coach'?`<button class="btn sm ghost" onclick="cambiarModo('cliente')">Entrenar yo</button>`:`<button class="btn sm ghost" onclick="cambiarModo('coach')">Panel del coach</button>`):'');
   pintarNav(nav);
   if(S.tab==='ejercicios'&&!S.vista&&$('#libres'))listaLib('libres');
@@ -417,15 +434,16 @@ function render(){
   scrollTo(0,S.vista==='chat'?document.body.scrollHeight:y);tick();
 }
 function pintarNav(show){$('#nav').hidden=!show;if(!show)return;
-  const t=S.modo==='coach'?[['clientes','Clientes',IC.gente],['rutinas','Rutinas',IC.lista],['ejercicios','Ejercicios',IC.pesa],['mensajes','Mensajes',IC.chat]]:[['hoy','Hoy',IC.hoy],['ejercicios','Ejercicios',IC.pesa],['progreso','Progreso',IC.prog],['coach','Coach',IC.chat]];
+  const t=S.modo==='coach'?[['clientes','Clientes',IC.gente],['pagos','Pagos',IC.pago],['rutinas','Rutinas',IC.lista],['ejercicios','Ejercicios',IC.pesa],['mensajes','Mensajes',IC.chat]]:[['hoy','Hoy',IC.hoy],['ejercicios','Ejercicios',IC.pesa],['progreso','Progreso',IC.prog],['coach','Coach',IC.chat]];
   const visto=ls.get('gf-visto',{});
   const punto=k=>{if(k==='coach'){const u=S.perfil?.ultMsg;return u&&u.de!==S.me&&u.fecha>(visto[S.me]||0)}
     if(k==='mensajes')return S.clientes.some(c=>c.ultMsg&&c.ultMsg.de!==S.me&&c.ultMsg.fecha>(visto[c.id]||0));
-    if(k==='hoy')return !!S.ses;return false};
+    if(k==='hoy')return !!S.ses;if(k==='pagos')return S.clientes.some(c=>c.id!==S.me&&pago(accesoDe(c.id)).k==='venc');return false};
+  $('#navIn').classList.toggle('c5',t.length===5);
   $('#navIn').innerHTML=t.map(([k,l,i])=>`<button onclick="irA('${k}')" ${S.tab===k?'aria-current="page"':''}>${i}${l}${punto(k)?'<span class="dot" aria-label="nuevo"></span>':''}</button>`).join('')}
 function irA(t){S.tab=t;S.vista=null;render();scrollTo(0,0)}
 function vSinConfig(){return `<div class="stack" style="padding-top:40px"><h1>Falta conectar Firebase</h1><p class="small">Esta página todavía no tiene los datos de tu proyecto de Firebase. Pégalos en <b>FIREBASE_CONFIG</b> dentro de index.html.</p></div>`}
-function salir(){if(S.ses&&!confirmSalir){confirmSalir=true;return toast('Tienes un entreno en curso. Toca «Salir» otra vez para salir igual.')}confirmSalir=false;S.authModo='entrar';S.auth.signOut();S.clientes=[];S.hist=[];S.recs=[];S.asig=[];S.rut=[];S.med=[];S.fotos=[];S.msgs=[];S.perfil=undefined;S.esOwner=false}
+function salir(){if(S.ses&&!confirmSalir){confirmSalir=true;return toast('Tienes un entreno en curso. Toca «Salir» otra vez para salir igual.')}confirmSalir=false;S.authModo='entrar';S.auth.signOut();S.clientes=[];S.hist=[];S.recs=[];S.asig=[];S.rut=[];S.med=[];S.fotos=[];S.msgs=[];S.perfil=undefined;S.acceso=undefined;S.accesos=[];S.esOwner=false}
 let confirmSalir=false;
 function vLogin(){const r=S.authModo==='crear',o=S.authModo==='olvido';
   return `<form class="stack auth" style="padding-top:48px" onsubmit="enviarAuth(event)">
@@ -699,7 +717,7 @@ function vCoach(){
 
 /* ================= COACH: Clientes ================= */
 function estado(c){if(!c.ultimo)return['Nuevo','nada'];const d=dias(c.ultimo);
-  if(d<=2&&c.ultPRs)return['Récord','pr'];if(d<=2)return['Al día','ok'];if(d>=7)return[`${d} días`,'alerta'];return[`${d} días`,'nada']}
+  if(d<=2&&c.ultPRs)return['Récord','pr'];if(d<=2)return['Entrenó','ok'];if(d>=7)return[`${d} días`,'alerta'];return[`${d} días`,'nada']}
 function detalleLinea(c){if(!c.ultimo)return c.alta?`Se unió ${hace(c.alta)}`:'Aún no entrena';return `${c.ultTitulo||'Entreno'} · ${hace(c.ultimo)} · ${c.ultMin||0} min${c.ultPRs?` · ${c.ultPRs} récord${c.ultPRs>1?'s':''}`:''}`}
 function vClientes(){const C=S.clientes;pedirNombres(C.map(c=>c.id));
   const activos=C.filter(c=>c.ultimo&&dias(c.ultimo)<=2).length,atras=C.filter(c=>!c.ultimo||dias(c.ultimo)>=7).length;
@@ -710,7 +728,7 @@ function vClientes(){const C=S.clientes;pedirNombres(C.map(c=>c.id));
     <div class="row" style="flex-wrap:wrap;gap:8px"><button class="btn primary sm" onclick="compartirLink()">Compartir enlace</button><button class="btn ghost sm" onclick="copiarLink()">Copiar enlace</button></div></section>
    <div class="grid3"><div class="tile"><span class="big">${C.length}</span><span class="tiny">Clientes</span></div><div class="tile"><span class="big" style="color:var(--accent)">${activos}</span><span class="tiny">Entrenaron hoy o ayer</span></div><div class="tile"><span class="big" style="color:var(--warn)">${atras}</span><span class="tiny">Sin entrenar 7+ días</span></div></div>
    <div class="chips" role="group" aria-label="Filtro de clientes"><button class="chip" aria-pressed="${S.filtro==='todos'}" onclick="S.filtro='todos';render()">Todos</button><button class="chip" aria-pressed="${S.filtro==='atencion'}" onclick="S.filtro='atencion';render()">Necesitan atención</button></div>`;
-  h+=lista.length?`<div class="stack s8">${lista.map(c=>{const [t,k]=estado(c),n=nombreCliente(c);return `<button class="card" style="padding:12px;border:0;text-align:left;color:var(--fg);flex-direction:row;align-items:center" onclick="abrirCliente(${J(c.id)})">${avatar(n)}<span class="grow"><b style="display:block">${esc(n)}${c.id===S.me?' (tú)':''}</b><span class="small">${esc(detalleLinea(c))}</span></span><span class="pill ${k}">${t}</span></button>`}).join('')}</div>`
+  h+=lista.length?`<div class="stack s8">${lista.map(c=>{const [t,k]=estado(c),n=nombreCliente(c);return `<button class="card" style="padding:12px;border:0;text-align:left;color:var(--fg);flex-direction:row;align-items:center" onclick="abrirCliente(${J(c.id)})">${avatar(n)}<span class="grow"><b style="display:block">${esc(n)}${c.id===S.me?' (tú)':''}</b><span class="small">${esc(detalleLinea(c))}</span></span><span class="pills"><span class="pill ${k}">${t}</span>${pillPago(c.id)}</span></button>`}).join('')}</div>`
     :`<div class="empty">${C.length?'Nadie necesita atención. ¡Todos van al día!':'Aún no tienes clientes. Cuando un cliente abra Genefit por primera vez, aparece aquí.'}</div>`;
   return h+`</div>${S.plantillas.length&&C.length?`<button class="btn primary fab" onclick="elegirPlantilla()">${IC.mas} Asignar rutina</button>`:''}`}
 function compartirLink(){if(navigator.share)navigator.share({title:'Genefit',text:'Entra a Genefit para ver tu rutina:',url:APP_URL}).catch(()=>{});else copiarLink()}
@@ -736,9 +754,79 @@ function vClienteDet(){const d=S.det,c=S.clientes.find(x=>x.id===d.id)||{id:d.id
   const R=[...d.recs].sort((a,b)=>b.fecha-a.fecha).slice(0,8);
   if(R.length)h+=`<section class="card"><b>Récords</b>${R.map(r=>`<div class="list-row"><span class="grow">${esc(r.nombre)}</span><span class="num"><b>${fmt(r.kg)} kg</b> × ${r.reps} <span class="small">· ${hace(r.fecha)}</span></span></div>`).join('')}</section>`;
   h+=`<section class="card"><b>Medidas y fotos</b>${c.compartir?(lineaPeso(d.med)||(d.med.length?'':'<span class="small">Aún no registra medidas.</span>'))+(d.fotos.length?`<div class="thumbs">${[...d.fotos].reverse().slice(0,9).map(f=>`<div class="thumb"><img src="${esc(f.img)}" alt="Foto de ${esc(f.pose||'')} del ${fecha(f.fecha)}" loading="lazy"><span class="cap">${esc(f.pose||'')} · ${fecha(f.fecha)}</span></div>`).join('')}</div>`:''):'<span class="small">Tu cliente no comparte sus medidas ni fotos. Puede activarlo en su sección Progreso.</span>'}</section>`;
+  if(d.id!==S.me){h+=cardPago(d.id,n);
+    h+=`<section class="card"><b>Eliminar cliente</b><span class="small">Borra sus entrenos, récords, rutinas y mensajes, y le cierra el acceso a Genefit. Lo puedes reactivar después desde «Pagos», pero sus datos borrados no vuelven.</span><button class="btn danger block" onclick="eliminarCliente(${J(d.id)},this)">Eliminar a ${esc(n)}</button></section>`}
   return h+'</div>'}
 async function desasignar(cid,aid,b){if(!b.dataset.ok){b.dataset.ok=1;b.style.color='var(--danger)';toast('Toca otra vez la ✕ para quitar la rutina');return}
   await escribir(()=>S.db.doc(`clientes/${cid}/asignadas/${aid}`).delete(),'Rutina quitada')}
+
+/* ================= Mensualidades y acceso ================= */
+const accesoDe=id=>S.accesos.find(a=>a.id===id);
+function pago(a){
+  if(a?.bloqueado)return{k:'susp',t:a.eliminado?'Eliminado':'Suspendido',cls:'mal'};
+  if(!a?.pagoHasta)return{k:'sin',t:'Sin pago',cls:'nada'};
+  if(a.pagoHasta<Date.now())return{k:'venc',t:'Vencido',cls:'mal'};
+  const d=Math.ceil((a.pagoHasta-Date.now())/DIA);
+  if(d<=5)return{k:'pronto',t:d<=1?'Vence hoy':`Vence en ${d} d`,cls:'alerta'};
+  return{k:'ok',t:'Al día',cls:'ok'}}
+function pillPago(cid){if(cid===S.me)return'';const p=pago(accesoDe(cid));return p.k==='ok'?'':`<span class="pill ${p.cls}">${p.t}</span>`}
+function restringido(){const a=S.acceso;if(S.esOwner||!a)return null;
+  if(a.bloqueado)return a.eliminado?'eliminado':'suspendido';
+  if(a.pagoHasta&&a.pagoHasta<Date.now())return'vencido';return null}
+function vBloqueado(){const r=restringido(),a=S.acceso||{},nom=S.coachNombre||'tu coach';
+  const tit={vencido:'Tu mensualidad venció',suspendido:'Tu acceso está en pausa',eliminado:'Tu cuenta está desactivada'}[r];
+  const txt={vencido:`Tu plan estaba pagado hasta el ${fechaLarga(a.pagoHasta)}. En cuanto ${esc(nom)} registre tu pago, vuelves a ver tus rutinas y tu progreso.`,
+    suspendido:`${esc(nom)} pausó tu acceso a Genefit. Escríbele para reactivarlo.`,
+    eliminado:`${esc(nom)} ya no tiene tu cuenta activa en Genefit. Si crees que es un error, contáctalo directamente.`}[r];
+  return `<div class="stack" style="padding-top:28px"><span class="pill mal" style="align-self:flex-start">${r==='vencido'?'Pago pendiente':r==='suspendido'?'Acceso en pausa':'Cuenta desactivada'}</span>
+   <h1 style="font-size:38px;line-height:1">${tit}</h1><p class="small" style="font-size:16px">${txt}</p>
+   ${r!=='eliminado'&&S.perfil?`<section class="card"><b>Escríbele a ${esc(nom)}</b>${hiloHTML(S.msgs)}${cajaMsg(S.me)}</section>`:''}</div>`}
+function cardPago(cid,n){const a=accesoDe(cid),p=pago(a);
+  if(S.sinReglasAcceso)return `<section class="card line" style="border-color:var(--warn)"><b>Mensualidad</b><span class="small">Para cobrar mensualidades falta pegar las reglas nuevas de Firestore en la consola de Firebase.</span></section>`;
+  return `<section class="card"><div class="row between"><b>Mensualidad</b><span class="pill ${p.cls}">${p.t}</span></div>
+   <span class="small">${a?.pagoHasta?`Pagado hasta el <b style="color:var(--fg)">${fechaLarga(a.pagoHasta)}</b>`:'Todavía no le registras ningún pago. Mientras tanto tiene acceso libre.'}${a?.ultPago?` · último pago registrado ${hace(a.ultPago)}`:''}</span>
+   <div class="grid2"><button class="btn primary" onclick="registrarPago(${J(cid)})">Pagó: +1 mes</button><button class="btn ghost" onclick="abrirFecha(${J(cid)})">Cambiar fecha</button></div>
+   ${a?.bloqueado?`<button class="btn ghost block" onclick="suspender(${J(cid)},false)">Reactivar acceso</button>`:`<button class="btn danger block" onclick="suspender(${J(cid)},true,this)">Suspender acceso ya</button>`}
+   <span class="small">Cuando la fecha pasa, ${esc(n)} solo ve un aviso de pago pendiente y el chat contigo. Sus datos no se borran.</span></section>`}
+function unMesDespues(t){const d=new Date(t),dia=d.getDate();d.setDate(1);d.setMonth(d.getMonth()+1);
+  const ult=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();d.setDate(Math.min(dia,ult));return finDia(d.getTime())}
+const aliasDe=cid=>nombreCliente(S.clientes.find(c=>c.id===cid)||accesoDe(cid)||{});
+async function registrarPago(cid){const a=accesoDe(cid),base=Math.max(Date.now(),a?.pagoHasta||0),ph=unMesDespues(base);
+  await escribir(()=>S.db.doc('acceso/'+cid).set({pagoHasta:ph,ultPago:Date.now(),bloqueado:false,eliminado:false,alias:aliasDe(cid)},{merge:true}),`Pago registrado. Al día hasta el ${fechaLarga(ph)}`)}
+function abrirFecha(cid){const a=accesoDe(cid),v=new Date(a?.pagoHasta||Date.now()),iso=`${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}-${String(v.getDate()).padStart(2,'0')}`;
+  abrirHoja(`<div class="row between"><h2>Pagado hasta</h2><button class="iconbtn" onclick="cerrarHoja()" aria-label="Cerrar">${IC.x}</button></div>
+   <div class="body"><div class="field"><label class="lbl" for="fph">${esc(aliasDe(cid))} tiene acceso hasta el</label><input class="input" id="fph" type="date" value="${iso}"></div>
+   <span class="small">El acceso se cierra al terminar ese día. Pon una fecha pasada si quieres cortarlo ya.</span>
+   <button class="btn primary go" onclick="guardarFecha(${J(cid)})">Guardar fecha</button></div>`)}
+async function guardarFecha(cid){const v=$('#fph')?.value;if(!v)return toast('Elige una fecha');const[y,m,d]=v.split('-').map(Number);const ph=new Date(y,m-1,d,23,59,59,999).getTime();
+  if(await escribir(()=>S.db.doc('acceso/'+cid).set({pagoHasta:ph,alias:aliasDe(cid)},{merge:true}),`Acceso hasta el ${fechaLarga(ph)}`))cerrarHoja()}
+async function suspender(cid,on,b){if(on&&b&&!b.dataset.ok){b.dataset.ok=1;b.textContent='Toca otra vez para suspender';return}
+  await escribir(()=>S.db.doc('acceso/'+cid).set(on?{bloqueado:true,alias:aliasDe(cid)}:{bloqueado:false,eliminado:false,alias:aliasDe(cid)},{merge:true}),on?'Acceso suspendido':'Acceso reactivado')}
+async function eliminarCliente(cid,b){if(!b.dataset.ok){b.dataset.ok=1;b.textContent='Toca otra vez para eliminar (no se puede deshacer)';return}
+  b.disabled=true;b.textContent='Eliminando…';const alias=aliasDe(cid);
+  const ok=await escribir(async()=>{
+    await S.db.doc('acceso/'+cid).set({bloqueado:true,eliminado:true,alias,eliminadoEl:Date.now()},{merge:true});
+    for(const c of['historial','records','asignadas','mensajes','medidas','fotos']){const q=await S.db.collection(`clientes/${cid}/${c}`).get();for(const x of q.docs)await x.ref.delete()}
+    await S.db.doc('clientes/'+cid).delete()},`${alias} fue eliminado`);
+  if(ok)cerrarCliente();else{b.disabled=false;b.textContent='Eliminar cliente'}}
+function filaPago(cid,n){const a=accesoDe(cid),p=pago(a);
+  return `<div class="card" style="padding:12px;gap:10px"><div class="row">${avatar(n)}<div class="grow" style="min-width:0"><b style="display:block">${esc(n)}</b><span class="small">${a?.pagoHasta?(p.k==='venc'?'Venció el ':'Hasta el ')+fecha(a.pagoHasta):'Sin pago registrado'}</span></div><span class="pill ${p.cls}">${p.t}</span></div>
+   ${a?.bloqueado?`<button class="btn ghost sm" onclick="suspender(${J(cid)},false)">Reactivar</button>`:`<div class="grid2"><button class="btn primary sm" onclick="registrarPago(${J(cid)})">+1 mes</button><button class="btn ghost sm" onclick="abrirFecha(${J(cid)})">Fecha</button></div>`}</div>`}
+function vPagos(){const C=S.clientes.filter(c=>c.id!==S.me).map(c=>({id:c.id,n:nombreCliente(c),p:pago(accesoDe(c.id)),a:accesoDe(c.id)}));
+  const ids=new Set(C.map(c=>c.id));const fuera=S.accesos.filter(a=>a.bloqueado&&!ids.has(a.id));
+  const cuenta=k=>C.filter(c=>c.p.k===k).length;
+  let h=`<div class="stack" style="padding-top:12px"><div><span class="small">Panel del entrenador</span><h1>Mensualidades</h1></div>`;
+  if(S.sinReglasAcceso)return h+`<section class="card line" style="border-color:var(--warn)"><b>Falta un paso en Firebase</b><span class="small">Para controlar pagos hay que pegar las reglas nuevas de Firestore en la consola de Firebase (Firestore → Reglas → Publicar).</span></section></div>`;
+  h+=`<div class="grid3"><div class="tile"><span class="big" style="color:var(--accent)">${cuenta('ok')}</span><span class="tiny">Al día</span></div><div class="tile"><span class="big" style="color:var(--warn)">${cuenta('pronto')}</span><span class="tiny">Vencen en 5 días</span></div><div class="tile"><span class="big" style="color:var(--danger)">${cuenta('venc')}</span><span class="tiny">Vencidos</span></div></div>`;
+  const orden={venc:0,pronto:1,sin:2,susp:3,ok:4};
+  const cobrar=C.filter(c=>c.p.k!=='ok').sort((x,y)=>orden[x.p.k]-orden[y.p.k]||(x.a?.pagoHasta||0)-(y.a?.pagoHasta||0));
+  const aldia=C.filter(c=>c.p.k==='ok').sort((x,y)=>x.a.pagoHasta-y.a.pagoHasta);
+  if(!C.length&&!fuera.length)return h+`<div class="empty">Cuando tengas clientes, aquí controlas quién pagó el mes.</div></div>`;
+  if(cobrar.length)h+=`<span class="lbl">Por cobrar o revisar</span><div class="stack s8">${cobrar.map(c=>filaPago(c.id,c.n)).join('')}</div>`;
+  if(aldia.length)h+=`<span class="lbl">Al día</span><div class="stack s8">${aldia.map(c=>filaPago(c.id,c.n)).join('')}</div>`;
+  if(fuera.length)h+=`<span class="lbl">Eliminados</span><div class="stack s8">${fuera.map(a=>filaPago(a.id,a.alias||'Cliente')).join('')}</div><span class="small">Si reactivas a alguien eliminado, vuelve a aparecer en tu lista la próxima vez que abra Genefit.</span>`;
+  h+=`<span class="small">Los clientes sin pago registrado tienen acceso libre. Cuando registras un pago, el acceso se cierra solo al pasar la fecha.</span>`;
+  return h+'</div>'}
 
 /* ================= COACH: Rutinas y asignación ================= */
 function vRutinas(){const P=S.plantillas;
