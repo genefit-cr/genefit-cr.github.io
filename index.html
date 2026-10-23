@@ -185,6 +185,7 @@ body.tema-f{--accent:#FF6EB4;--ok-bg:#331020;--ok-line:#6E2249;--ok-fg:#EBB0CC;-
 .vtog .chip{border:0;min-height:32px}
 @media (prefers-reduced-motion:reduce){.v3d canvas{transition:none}}
 /* Foto de la entrenadora */
+.afiche{width:100%;height:auto;aspect-ratio:900/898;border-radius:20px;display:block;background:var(--card)}
 .coachfoto,.fcoach{border-radius:50%;object-fit:cover;flex:none;border:2px solid var(--accent);background:var(--raise)}
 .coachfoto{width:30px;height:30px;margin-left:2px}
 .saludo{border-color:var(--accent);background:linear-gradient(160deg,var(--ok-bg),var(--card) 70%)}
@@ -284,7 +285,7 @@ const EJEMPLOS=[
   {nombre:'Pierna completa',ejercicios:[{nombre:'Extensión de pierna',series:3,reps:12,kg:40,desc:60},{nombre:'Sentadilla hack (máquina)',series:3,reps:10,kg:80,desc:120},{nombre:'Sentadilla goblet',series:1,reps:15,kg:24,desc:60},{nombre:'Curl femoral acostado',series:3,reps:12,kg:35,desc:60},{nombre:'Pantorrilla de pie',series:4,reps:15,kg:40,desc:45}]}];
 
 /* ================= La entrenadora ================= */
-const ENTRENA={nombre:'Génesis Garita',corto:'Génesis',foto:'icons/genesis.jpg',titulo:'Personal Trainer',
+const ENTRENA={nombre:'Génesis Garita',corto:'Génesis',foto:'icons/genesis.jpg',afiche:'icons/genesis-afiche.jpg',titulo:'Personal Trainer',
   esp:['Evaluación corporal','Entrenamiento personal y en pareja','Rutinas personalizadas','Aumento de masa muscular','Recomposición corporal','Rehabilitación deportiva','Adultos mayores']};
 const fotoCoach=(t=44)=>`<img class="fcoach" src="${ENTRENA.foto}" alt="${ENTRENA.nombre}" width="${t}" height="${t}" style="width:${t}px;height:${t}px">`;
 
@@ -544,9 +545,9 @@ let confirmSalir=false;
 function vLogin(){const r=S.authModo==='crear',o=S.authModo==='olvido';
   return `<form class="stack auth" style="padding-top:36px" onsubmit="enviarAuth(event)">
    <span class="marca"><i><svg viewBox="0 0 24 24" fill="none" stroke="#0E0F12" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6v12M18 6v12M3 9v6M21 9v6M6 12h12"/></svg></i>GENEFIT</span>
-   <div class="row" style="gap:14px">${fotoCoach(r||o?64:88)}<div><div style="font-family:var(--display);font-weight:900;font-size:20px">${ENTRENA.nombre}</div><span class="eyebrow ac">${ENTRENA.titulo}</span></div></div>
-   <h1 style="font-size:44px;line-height:.98">${o?'Recupera<br>tu clave':r?'Crea tu<br>cuenta':`Entrena<br>con ${ENTRENA.corto}.<br><span style="color:var(--accent)">Hoy.</span>`}</h1>
-   ${r||o?'':`<div class="chips scroll" aria-label="Especialidades">${ENTRENA.esp.map(x=>`<span class="tag" style="flex:none">${x}</span>`).join('')}</div>`}
+   ${r||o?`<div class="row" style="gap:14px">${fotoCoach(64)}<div><div style="font-family:var(--display);font-weight:900;font-size:20px">${ENTRENA.nombre}</div><span class="eyebrow ac">${ENTRENA.titulo}</span></div></div>`
+     :`<img class="afiche" src="${ENTRENA.afiche}" alt="${ENTRENA.nombre}, Personal Trainer. ${ENTRENA.esp.join(', ')}." width="900" height="898">`}
+   <h1 style="font-size:${r||o?44:38}px;line-height:.98">${o?'Recupera<br>tu clave':r?'Crea tu<br>cuenta':`Entrena con ${ENTRENA.corto}. <span style="color:var(--accent)">Hoy.</span>`}</h1>
    ${r?`<div class="field"><label class="lbl" for="anom">Tu nombre</label><input class="input" id="anom" required maxlength="40" autocomplete="name" placeholder="¿Cómo te llamas?"></div>
    <div class="field"><span class="lbl">Soy</span>${sexoChips(S.sexoNuevo,'sexoForm')}</div>`:''}
    <div class="field"><label class="lbl" for="amail">Correo</label><input class="input" id="amail" type="email" required autocomplete="email" inputmode="email" placeholder="tucorreo@gmail.com"></div>

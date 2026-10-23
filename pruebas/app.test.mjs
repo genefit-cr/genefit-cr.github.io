@@ -290,7 +290,7 @@ try {
   await C.evaluate(() => irA('pagos'));
   await ver(C, 'Eliminados');
   await C.getByRole('button', { name: 'Reactivar' }).click();
-  await ver(C, 'Regístrale el pago');
+  await C.waitForFunction(() => { const a = accesoDe(window.__ana); return a && !a.bloqueado && !a.pagoHasta; }, null, { timeout: 15000 });
   await ver(K, 'Hola, Ana');
   await C.evaluate(() => { S.filtro = 'todos'; irA('clientes'); });
   await ver(C, 'Ana Pérez');
