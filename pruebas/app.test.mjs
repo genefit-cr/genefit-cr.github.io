@@ -355,6 +355,22 @@ try {
   // Lo que el coach había anotado antes (versión anterior) cuenta como confirmado
   await C.evaluate(() => S.db.doc('acceso/' + window.__ana).set({ sesCompradas: 5, sesLog: [{ id: 'x1', t: 1760000000000 }] }, { merge: true }));
   await K.waitForFunction(() => { const s = sesDe(S.perfil, S.acceso); return s.comp === 17 && s.rest === 15; }, null, { timeout: 15000 });
+  // Génesis ajusta la compra de 12 a 10 (solo le pagaron 10) y luego la anula
+  await C.evaluate(() => { cerrarHoja(); abrirCliente(window.__ana); });
+  await C.getByRole('button', { name: 'Ajustar o anular compras' }).click();
+  await ver(C, 'Ajustar sesiones');
+  await C.fill('#aj-0', '10');
+  await foto(C, 'ajustar-sesiones');
+  await C.getByRole('button', { name: 'Guardar', exact: true }).click();
+  await ver(C, 'Listo: esa compra ahora vale 10');
+  await K.waitForFunction(() => { const s = sesDe(S.perfil, S.acceso); return s.comp === 15 && s.rest === 13; }, null, { timeout: 15000 });
+  await K.waitForFunction(() => (S.perfil?.ultMsg?.texto || '').includes('ahora son 10 sesiones'), null, { timeout: 15000 });
+  await K.waitForFunction(() => document.body.innerHTML.includes('Ajustada por Génesis (se pidieron 12)'), null, { timeout: 15000 });
+  await C.getByRole('button', { name: 'Ajustar o anular compras' }).click();
+  const anular = C.getByRole('button', { name: 'Anular esta compra' });
+  await anular.click(); await C.getByRole('button', { name: 'Toca otra vez para anularla' }).click();
+  await ver(C, 'Compra anulada');
+  await K.waitForFunction(() => { const s = sesDe(S.perfil, S.acceso); return s.comp === 5 && s.rest === 3; }, null, { timeout: 15000 });
 
   // Eliminar y reactivar a un cliente (sin mensualidad)
   await C.evaluate(() => { cerrarHoja(); abrirCliente(window.__ana); });
