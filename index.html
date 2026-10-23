@@ -1591,7 +1591,7 @@ function bannerInstalar(){if(instalada()||ls.get('gf-noinstalar',false)||(!pedir
   return `<section class="card line" style="flex-direction:row;align-items:center;gap:12px"><img src="icons/icon-192.png" alt="" width="44" height="44" style="border-radius:12px;flex:none"><div class="grow"><b>Instala Genefit</b><div class="small">${pedirInstalar?'Ábrela como app desde tu pantalla de inicio, también sin señal.':'Toca <b>Compartir</b> y luego <b>«Agregar a pantalla de inicio»</b>.'}</div></div>
    ${pedirInstalar?`<button class="btn sm primary" onclick="instalar()">Instalar</button>`:''}<button class="iconbtn" onclick="ls.set('gf-noinstalar',true);render()" aria-label="No mostrar más">${IC.x}</button></section>`}
 async function instalar(){if(!pedirInstalar)return;pedirInstalar.prompt();try{await pedirInstalar.userChoice}catch(e){}pedirInstalar=null;render()}
-if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(e=>console.warn('sw',e)));
+if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))addEventListener('load',()=>navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>{document.addEventListener('visibilitychange',()=>{if(!document.hidden)r.update().catch(()=>{})})}).catch(e=>console.warn('sw',e)));
 
 init();
 </script>
