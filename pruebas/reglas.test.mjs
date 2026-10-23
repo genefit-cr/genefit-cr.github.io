@@ -1,5 +1,7 @@
 import { initializeTestEnvironment, assertSucceeds as ok, assertFails as no } from '@firebase/rules-unit-testing';
 import { readFileSync } from 'node:fs';
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/firestore';
 
 const env = await initializeTestEnvironment({
   projectId: 'genefit-test',
@@ -104,6 +106,10 @@ await t('coach aprueba', ok(coach.doc('clientes/bob/comprobantes/c1').update({ e
 await t('coach limpia pendiente', ok(coach.doc('clientes/bob').update({ compPend: null })));
 // Dolor
 await t('bob compra y usa sesiones', ok(bob.doc('clientes/bob').update({ ses: { compradas: 10, log: [{ id: 'a', t: 1 }], paq: [{ id: 'p', t: 1, c: 10, m: 'efectivo' }] } })));
+await t('bob agrega otra sesión usada', ok(bob.doc('clientes/bob').update({ ses: { compradas: 10, log: [{ id: 'a', t: 1 }, { id: 'b', t: 2, r: 'Pierna' }], paq: [{ id: 'p', t: 1, c: 10, m: 'efectivo' }] } })));
+await t('bob NO borra una sesión usada', no(bob.doc('clientes/bob').update({ ses: { compradas: 10, log: [{ id: 'b', t: 2, r: 'Pierna' }], paq: [{ id: 'p', t: 1, c: 10, m: 'efectivo' }] } })));
+await t('bob NO cambia la fecha de una sesión usada', no(bob.doc('clientes/bob').update({ ses: { compradas: 10, log: [{ id: 'a', t: 5 }, { id: 'b', t: 2, r: 'Pierna' }], paq: [] } })));
+await t('bob NO borra todas sus sesiones', no(bob.doc('clientes/bob').update({ ses: firebase.firestore.FieldValue.delete() })));
 await t('sesiones mal formadas', no(bob.doc('clientes/bob').update({ ses: { compradas: 'muchas', log: [], paq: [] } })));
 await t('coach NO cambia sesiones', no(coach.doc('clientes/bob').update({ ses: { compradas: 99, log: [], paq: [] } })));
 await t('comprobante con cantidad', ok(bob.doc('clientes/bob/comprobantes/c9').set({ img: foto, ref: '', monto: 80000, fecha: 1, estado: 'pendiente', cant: 10 })));

@@ -68,6 +68,10 @@ service cloud.firestore {
       function sexoValido() { return !('sexo' in datos()) || datos().sexo in ['m', 'f']; }
       // Sesiones: las compra y descuenta el propio cliente; el coach solo las ve.
       function sesValida() { return !('ses' in datos()) || (datos().ses.compradas is number && datos().ses.log is list && datos().ses.paq is list); }
+      // Las sesiones usadas no se pueden borrar ni cambiar: solo agregar. Si hubo un error, el coach la anula.
+      function sesSoloAgrega() {
+        return !('ses' in resource.data) || ('ses' in datos() && datos().ses.log.hasAll(resource.data.ses.log));
+      }
       // El último mensaje solo lo puede poner quien lo escribió (si no cambia, no se revisa).
       function ultMsgValido() {
         return !('ultMsg' in datos())
@@ -79,7 +83,7 @@ service cloud.firestore {
         && datos().keys().hasOnly(camposCliente()) && texto(datos().alias, 40) && ultMsgValido() && sexoValido() && sesValida();
       // Solo se revisan los campos que cambian, para no trabar fichas antiguas con campos viejos.
       allow update: if (soy(uid) && !eliminado(uid)
-          && cambia().hasOnly(camposCliente()) && texto(datos().get('alias', ''), 40) && ultMsgValido() && sexoValido() && sesValida())
+          && cambia().hasOnly(camposCliente()) && texto(datos().get('alias', ''), 40) && ultMsgValido() && sexoValido() && sesValida() && sesSoloAgrega())
         || (esCoach() && cambia().hasOnly(['ultMsg', 'compPend']) && ultMsgValido());
       allow delete: if esCoach();
 
