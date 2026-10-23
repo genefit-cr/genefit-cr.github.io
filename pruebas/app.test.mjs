@@ -306,38 +306,55 @@ try {
   await K.evaluate(() => irA('hoy'));
   await ver(K, 'Tus sesiones con Génesis');
   await K.getByRole('button', { name: 'Comprar sesiones' }).click();
-  await ver(K, '₡80'); await ver(K, '8888-1234');
+  await K.fill('#cp-c', '20'); await K.locator('#cp-c').blur(); await K.waitForTimeout(100);
+  if (await K.evaluate(() => S.compra.c) !== 16) problemas.push('El máximo debía ser 16 sesiones');
+  await K.fill('#cp-c', '3'); await K.locator('#cp-c').blur(); await K.waitForTimeout(100);
+  if (await K.evaluate(() => S.compra.c) !== 8) problemas.push('El mínimo debía ser 8 sesiones');
+  await K.getByRole('button', { name: '12', exact: true }).click();
+  await ver(K, '12 sesiones · ₡96'); await ver(K, '8888-1234');
   await K.fill('#cp-ref', '2026102299887766');
   await K.setInputFiles('#cp-img', png);
   await ver(K, 'Comprobante listo');
   await foto(K, 'comprar-sesiones');
-  await K.getByRole('button', { name: 'Comprar 10 sesiones' }).click();
-  await ver(K, 'de 10 te quedan');
+  await K.getByRole('button', { name: 'Comprar 12 sesiones' }).click();
+  await ver(K, '12 sesiones · Pago por confirmar por Génesis');
+  if (await K.getByRole('button', { name: 'Usé una sesión' }).isEnabled()) problemas.push('No debía poder usar sesiones antes de la confirmación');
+  await foto(K, 'compra-pendiente');
+  // Génesis acepta el pago
+  await C.evaluate(() => { const c = S.clientes.find(x => x.alias === 'Ana Pérez'); window.__ana = c.id; abrirCliente(c.id); });
+  await ver(C, 'Compra por confirmar');
+  await C.getByRole('button', { name: 'Ver comprobante' }).click();
+  await ver(C, '2026102299887766');
+  await foto(C, 'revisar-comprobante');
+  await C.evaluate(() => cerrarHoja());
+  await foto(C, 'compra-por-confirmar');
+  await C.getByRole('button', { name: 'Aceptar pago' }).click();
+  await ver(C, 'Pago confirmado: 12 sesiones activas');
+  await ver(K, 'de 12 te quedan');
   await K.getByRole('button', { name: 'Usé una sesión' }).click();
   await K.fill('#us-t', '2026-10-20T18:30'); await K.fill('#us-n', 'Pierna');
   await K.getByRole('button', { name: 'Descontar 1 sesión' }).click();
-  await K.waitForFunction(() => sesDe(S.perfil).rest === 9, null, { timeout: 15000 });
+  await K.waitForFunction(() => sesDe(S.perfil, S.acceso).rest === 11, null, { timeout: 15000 });
+  await K.locator('details', { hasText: 'Mis compras' }).locator('summary').click();
+  await ver(K, 'Pago confirmado por Génesis ✓');
   await K.locator('details', { hasText: 'Ver mis sesiones' }).locator('summary').click();
   await ver(K, 'Pierna');
   await foto(K, 'sesiones-cliente');
-  await C.evaluate(() => { const c = S.clientes.find(x => x.alias === 'Ana Pérez'); window.__ana = c.id; abrirCliente(c.id); });
-  await ver(C, 'de 10 restantes');
-  if (await C.getByRole('button', { name: /Registrar sesión|Usé una sesión|Agregar paquete/ }).count()) problemas.push('El coach no debía poder registrar sesiones');
+  // El cliente no puede activarse sesiones solo
+  const truco = await K.evaluate(() => S.db.doc('acceso/' + S.me).set({ sesAprob: { x: { c: 99, t: 1 } } }, { merge: true }).then(() => 'pasó', e => e.code));
+  if (truco !== 'permission-denied') problemas.push('El cliente pudo aprobarse sesiones: ' + truco);
+  await ver(C, 'de 12 restantes');
+  if (await C.getByRole('button', { name: /Usé una sesión|Registrar sesión/ }).count()) problemas.push('El coach no debía poder registrar sesiones');
   await C.locator('details', { hasText: 'Sesiones usadas' }).locator('summary').click();
   await ver(C, 'Pierna');
   await C.locator('details', { hasText: 'Compras (' }).locator('summary').click();
   await ver(C, 'SINPE Móvil');
   await foto(C, 'sesiones-coach');
-  await C.getByRole('button', { name: 'Ver', exact: true }).click();
-  await ver(C, '2026102299887766');
-  await foto(C, 'revisar-comprobante');
-  await C.getByRole('button', { name: 'Confirmar: el pago llegó' }).click();
-  await ver(C, 'Pago confirmado');
-  await K.waitForFunction(() => S.comp[0]?.estado === 'aprobado', null, { timeout: 15000 });
-  // Las sesiones que el coach había anotado en la versión anterior pasan solas a la cuenta del cliente
-  await C.evaluate(() => S.db.doc('acceso/' + window.__ana).set({ plan: 'sesion', sesCompradas: 5, sesLog: [{ id: 'x1', t: 1760000000000 }] }, { merge: true }));
-  await K.evaluate(() => S.db.doc(BASE()).update({ ses: firebase.firestore.FieldValue.delete() }));
-  await K.waitForFunction(() => S.perfil?.ses?.compradas === 5 && S.perfil.ses.log.length === 1, null, { timeout: 15000 });
+  const est = await K.evaluate(() => S.comp[0]?.estado);
+  if (est !== 'aprobado') problemas.push('El comprobante no quedó confirmado: ' + est);
+  // Lo que el coach había anotado antes (versión anterior) cuenta como confirmado
+  await C.evaluate(() => S.db.doc('acceso/' + window.__ana).set({ sesCompradas: 5, sesLog: [{ id: 'x1', t: 1760000000000 }] }, { merge: true }));
+  await K.waitForFunction(() => { const s = sesDe(S.perfil, S.acceso); return s.comp === 17 && s.rest === 15; }, null, { timeout: 15000 });
 
   // Eliminar y reactivar a un cliente (sin mensualidad)
   await C.evaluate(() => { cerrarHoja(); abrirCliente(window.__ana); });
