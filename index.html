@@ -1252,11 +1252,11 @@ function ajusteHuella(){if(!HUELLA_OK)return'';const on=!!huella();
    Confirmación del pago: acceso/{uid}.sesAprob = {idCompra:{c,t}} y sesRech = {idCompra:t} — solo lo escribe el coach,
    así que nadie puede activarse sesiones sin que Génesis acepte el pago.
    Lo que el coach anotaba antes (acceso.sesCompradas / sesLog / sesPaq) cuenta como confirmado. */
-const SES_MIN=1,SES_MAX=20,PRECIO_SESION=12000;
+const SES_MIN=1,SES_MAX=20,PRECIO_SESION=12000,SES_AJ_MAX=99;
 const METODOS={sinpe:'SINPE Móvil',efectivo:'Efectivo',transf:'Transferencia',genesis:'Registrado por Génesis'};
 const fechaHora=t=>new Date(t).toLocaleString('es-CR',{weekday:'short',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});
 function sesDe(c,a){const x=c?.ses||{},ap=a?.sesAprob||{},re=a?.sesRech||{};
-  const paq=[...(x.paq||[]).map(p=>({...p,estado:ap[p.id]?'ok':re[p.id]?'no':'pend',c:ap[p.id]?.c??p.c})),...(a?.sesPaq||[]).map(p=>({id:'g'+p.t,t:p.t,c:p.c,m:'genesis',estado:'ok',...(p.n?{ref:p.n}:{})}))].sort((p,q)=>q.t-p.t);
+  const paq=[...(x.paq||[]).map(p=>({...p,estado:ap[p.id]?'ok':re[p.id]?'no':'pend',c:ap[p.id]?.c??p.c,pidio:p.c})),...(a?.sesPaq||[]).map(p=>({id:'g'+p.t,t:p.t,c:p.c,m:'genesis',estado:'ok',...(p.n?{ref:p.n}:{})}))].sort((p,q)=>q.t-p.t);
   const comp=(a?.sesCompradas||0)+Object.values(ap).reduce((s,v)=>s+(+v?.c||0),0);
   const log=[...(a?.sesLog||[]).map(l=>({...l,g:1})),...(x.log||[])].sort((p,q)=>q.t-p.t);
   return{comp,us:log.length,rest:comp-log.length,log,paq,pend:paq.find(p=>p.estado==='pend')||null}}
@@ -1267,7 +1267,7 @@ function estadoSes(c){const s=sesCli(c);if(s.pend)return{k:'pend',t:'Por confirm
 const pillSes=c=>c.id===S.me?'':(p=>`<span class="pill ${p.cls}">${p.t}</span>`)(estadoSes(c));
 const estadoCompra=p=>p.estado==='ok'?`Pago confirmado por ${ENTRENA.corto} ✓`:p.estado==='no'?`${ENTRENA.corto} no recibió el pago`:`Pago por confirmar por ${ENTRENA.corto}`;
 const listaSesiones=(s,borrar)=>s.log.map((x,k)=>`<div class="list-row"><span class="grow"><b class="num">#${s.us-k}</b> · ${fechaHora(x.t)}${x.n?`<span class="small" style="display:block">${esc(x.n)}</span>`:''}${x.g?'<span class="small" style="display:block">Anotada por '+ENTRENA.corto+'</span>':''}</span>${borrar&&!x.g?`<button class="iconbtn" onclick="borrarMiSesion(${J(x.id)},this)" aria-label="Borrar la sesión del ${fechaHora(x.t)}">${IC.x}</button>`:''}</div>`).join('');
-const listaCompras=(s,cid)=>s.paq.map(x=>`<div class="list-row" style="align-items:flex-start"><span class="grow"><b>${x.c} sesiones</b><span class="small" style="display:block;color:${x.estado==='ok'?'var(--ok-fg)':x.estado==='no'?'var(--danger)':'var(--gold)'}">${estadoCompra(x)}</span><span class="small" style="display:block">${esc(METODOS[x.m]||x.m||'')}${x.ref?' · ref. '+esc(x.ref):''}</span></span><span style="text-align:right"><span class="small">${fecha(x.t)}</span>${cid&&x.comp?`<button class="btn sm ghost" style="display:block;margin-top:4px" onclick="verComprobante(${J(cid)},${J(x.comp)})">Comprobante</button>`:''}</span></div>`).join('');
+const listaCompras=(s,cid)=>s.paq.map(x=>`<div class="list-row" style="align-items:flex-start"><span class="grow"><b>${x.c} sesiones</b><span class="small" style="display:block;color:${x.estado==='ok'?'var(--ok-fg)':x.estado==='no'?'var(--danger)':'var(--gold)'}">${estadoCompra(x)}</span>${x.estado==='ok'&&x.pidio&&x.pidio!==x.c?`<span class="small" style="display:block">Ajustada por ${ENTRENA.corto} (se pidieron ${x.pidio})</span>`:''}<span class="small" style="display:block">${esc(METODOS[x.m]||x.m||'')}${x.ref?' · ref. '+esc(x.ref):''}</span></span><span style="text-align:right"><span class="small">${fecha(x.t)}</span>${cid&&x.comp?`<button class="btn sm ghost" style="display:block;margin-top:4px" onclick="verComprobante(${J(cid)},${J(x.comp)})">Comprobante</button>`:''}</span></div>`).join('');
 function escribirSes(cambio,msg){const x=S.perfil?.ses||{};const n=cambio({compradas:0,log:[...(x.log||[])],paq:[...(x.paq||[])]});return escribir(()=>S.db.doc(BASE()).update({ses:n}),msg)}
 /* Cliente */
 function tarjetaSesiones(){if(S.esOwner||!S.perfil)return'';const s=sesDe(S.perfil,S.acceso),nom=ENTRENA.corto;
@@ -1322,18 +1322,39 @@ function cajaCompraPend(c){const s=sesCli(c),p=s.pend;if(!p)return'';
    <span class="big" style="font-size:26px">${p.c} sesiones${' · '+colones(p.c*PRECIO_SESION)}</span>
    <span class="small" style="color:var(--fg)">${esc(METODOS[p.m]||p.m)}${p.ref?' · ref. '+esc(p.ref):''}</span>
    ${p.comp?`<button class="btn ghost block" onclick="verComprobante(${J(c.id)},${J(p.comp)})">Ver comprobante</button>`:''}
-   <div class="grid2"><button class="btn primary" onclick="aceptarCompra(${J(c.id)},${J(p.id)})">Aceptar pago</button><button class="btn danger" onclick="rechazarCompra(${J(c.id)},${J(p.id)},this)">Rechazar</button></div>
-   <span class="small">Al aceptar, las ${p.c} sesiones empiezan a contar para ${esc(nombreCliente(c))}.</span></section>`}
-async function aceptarCompra(cid,id){const c=S.clientes.find(x=>x.id===cid),p=sesCli(c||{id:cid}).paq.find(x=>x.id===id);if(!p)return;const del=firebase.firestore.FieldValue.delete();
-  await escribir(async()=>{await S.db.doc('acceso/'+cid).set({sesAprob:{[id]:{c:p.c,t:Date.now()}},alias:aliasDe(cid)},{merge:true});
+   <div class="field"><label class="lbl" for="ac-${esc(c.id)}">Sesiones que vas a confirmar</label><input class="input num" id="ac-${esc(c.id)}" type="number" inputmode="numeric" min="1" max="${SES_AJ_MAX}" value="${p.c}"><span class="tiny">Si te pagó menos, cambia el número antes de aceptar.</span></div>
+   <div class="grid2"><button class="btn primary" onclick="aceptarCompra(${J(c.id)},${J(p.id)},this)">Aceptar pago</button><button class="btn danger" onclick="rechazarCompra(${J(c.id)},${J(p.id)},this)">Rechazar</button></div>
+   <span class="small">Al aceptar, las sesiones empiezan a contar para ${esc(nombreCliente(c))}.</span></section>`}
+async function aceptarCompra(cid,id,b){const c=S.clientes.find(x=>x.id===cid),p=sesCli(c||{id:cid}).paq.find(x=>x.id===id);if(!p)return;const del=firebase.firestore.FieldValue.delete();
+  const inp=b?.closest('section')?.querySelector('input'),n=inp?Math.round(+inp.value):p.c;
+  if(!(n>=1&&n<=SES_AJ_MAX))return toast(`Escribe un número de 1 a ${SES_AJ_MAX}`);
+  await escribir(async()=>{await S.db.doc('acceso/'+cid).set({sesAprob:{[id]:{c:n,t:Date.now()}},alias:aliasDe(cid)},{merge:true});
+    if(n!==p.c)await avisarCliente(cid,`Confirmé tu pago de ${n} sesi${n===1?'ón':'ones'} (habías pedido ${p.c}).`);
     if(p.comp){await S.db.doc(`clientes/${cid}/comprobantes/${p.comp}`).update({estado:'aprobado',revisado:Date.now()}).catch(()=>{});if(c?.compPend?.id===p.comp)await S.db.doc('clientes/'+cid).update({compPend:del})}},
-    `Pago confirmado: ${p.c} sesiones activas`)}
+    `Pago confirmado: ${n} sesi${n===1?'ón activa':'ones activas'}`)}
 async function rechazarCompra(cid,id,b){if(!b.dataset.ok){b.dataset.ok=1;b.textContent='Toca otra vez para rechazar';return}
   const c=S.clientes.find(x=>x.id===cid),p=sesCli(c||{id:cid}).paq.find(x=>x.id===id);if(!p)return;const del=firebase.firestore.FieldValue.delete();
-  const m={de:S.me,texto:`No pude confirmar tu pago de ${p.c} sesiones. ¿Me ayudas con la referencia o lo revisamos juntos?`,fecha:Date.now()};
   await escribir(async()=>{await S.db.doc('acceso/'+cid).set({sesRech:{[id]:Date.now()},alias:aliasDe(cid)},{merge:true});
     if(p.comp){await S.db.doc(`clientes/${cid}/comprobantes/${p.comp}`).update({estado:'rechazado',revisado:Date.now()}).catch(()=>{});if(c?.compPend?.id===p.comp)await S.db.doc('clientes/'+cid).update({compPend:del})}
-    await S.db.collection('clientes/'+cid+'/mensajes').doc('m'+uid()).set(m);await S.db.doc('clientes/'+cid).update({ultMsg:m})},'Compra rechazada. Le avisamos por el chat.')}
+    await avisarCliente(cid,`No pude confirmar tu pago de ${p.c} sesiones. ¿Me ayudas con la referencia o lo revisamos juntos?`)},'Compra rechazada. Le avisamos por el chat.')}
+async function avisarCliente(cid,texto){const m={de:S.me,texto,fecha:Date.now()};await S.db.collection('clientes/'+cid+'/mensajes').doc('m'+uid()).set(m);await S.db.doc('clientes/'+cid).update({ultMsg:m})}
+/* Coach: cambiar o anular compras ya confirmadas (ej. pidió 20 y solo pagó 10) */
+const comprasAjustables=c=>sesCli(c).paq.filter(p=>p.estado==='ok'&&p.m!=='genesis');
+function abrirAjuste(cid){const c=S.clientes.find(x=>x.id===cid);if(!c)return;const s=sesCli(c),l=comprasAjustables(c);
+  abrirHoja(`<div class="row between"><h2>Ajustar sesiones</h2><button class="iconbtn" onclick="cerrarHoja()" aria-label="Cerrar">${IC.x}</button></div>
+   <div class="body"><span class="small">${esc(nombreCliente(c))} tiene ${s.comp} sesiones confirmadas y usó ${s.us}. Cambia cuántas vale cada compra, por ejemplo si pidió 20 y solo te pagó 10. Le avisamos por el chat.</span>
+   ${l.length?l.map((p,k)=>`<div class="card" style="padding:12px;gap:8px"><div class="row between"><b>${p.c} sesiones${p.pidio!==p.c?` <span class="small" style="font-weight:500">(pidió ${p.pidio})</span>`:''}</b><span class="small">${fecha(p.t)} · ${esc(METODOS[p.m]||p.m||'')}</span></div>
+     <div class="row" style="gap:8px;align-items:flex-end"><div class="field grow"><label class="lbl" for="aj-${k}">Sesiones de esta compra</label><input class="input num" id="aj-${k}" type="number" inputmode="numeric" min="1" max="${SES_AJ_MAX}" value="${p.c}"></div><button class="btn primary" onclick="ajustarCompra(${J(cid)},${J(p.id)},${k})">Guardar</button></div>
+     <button class="btn danger block" onclick="anularCompra(${J(cid)},${J(p.id)},this)">Anular esta compra</button></div>`).join(''):'<div class="empty">No hay compras confirmadas para ajustar.</div>'}
+   <button class="btn ghost block" onclick="cerrarHoja()">Listo</button></div>`)}
+async function ajustarCompra(cid,id,k){const c=S.clientes.find(x=>x.id===cid),p=c&&comprasAjustables(c).find(x=>x.id===id);if(!p)return;
+  const n=Math.round(+$('#aj-'+k)?.value);if(!(n>=1&&n<=SES_AJ_MAX))return toast(`Escribe un número de 1 a ${SES_AJ_MAX}`);if(n===p.c)return toast('No cambiaste el número');
+  if(await escribir(async()=>{await S.db.doc('acceso/'+cid).set({sesAprob:{[id]:{c:n,t:Date.now()}}},{merge:true});
+    await avisarCliente(cid,`Ajusté tu compra del ${fecha(p.t)}: ahora son ${n} sesi${n===1?'ón':'ones'} (antes ${p.c}).`)},`Listo: esa compra ahora vale ${n}`))cerrarHoja()}
+async function anularCompra(cid,id,b){if(!b.dataset.ok){b.dataset.ok=1;b.textContent='Toca otra vez para anularla';return}
+  const c=S.clientes.find(x=>x.id===cid),p=c&&comprasAjustables(c).find(x=>x.id===id);if(!p)return;const del=firebase.firestore.FieldValue.delete();
+  if(await escribir(async()=>{await S.db.doc('acceso/'+cid).set({sesAprob:{[id]:del},sesRech:{[id]:Date.now()}},{merge:true});
+    await avisarCliente(cid,`Anulé tu compra de ${p.c} sesiones del ${fecha(p.t)}. Si es un error, escríbeme.`)},'Compra anulada'))cerrarHoja()}
 function cardSesionesCoach(c,n){const s=sesCli(c),p=estadoSes(c),a=accesoDe(c.id);
   return cajaCompraPend(c)+`<section class="card"><div class="row between"><b>Sesiones</b><span class="pill ${p.cls}">${p.t}</span></div>
    ${s.comp?`<div class="row" style="align-items:baseline;gap:8px"><span class="big num" style="font-size:44px;${s.rest<0?'color:var(--danger)':''}">${s.rest<0?'−'+(-s.rest):s.rest}</span><span class="small">${s.rest<0?'usadas sin pagar':'de '+s.comp+' restantes'} · ${s.us} usada${s.us===1?'':'s'}</span></div>
@@ -1341,6 +1362,7 @@ function cardSesionesCoach(c,n){const s=sesCli(c),p=estadoSes(c),a=accesoDe(c.id
     :`<span class="small">${esc(n)} todavía no tiene sesiones confirmadas.</span>`}
    ${s.log.length?`<details><summary style="font-weight:700;cursor:pointer;padding:6px 0">Sesiones usadas (${s.us})</summary>${listaSesiones(s,false)}</details>`:''}
    ${s.paq.length?`<details><summary style="font-weight:700;cursor:pointer;padding:6px 0">Compras (${s.paq.length})</summary>${listaCompras(s,c.id)}</details>`:''}
+   ${comprasAjustables(c).length?`<button class="btn ghost block" onclick="abrirAjuste(${J(c.id)})">Ajustar o anular compras</button>`:''}
    ${a?.bloqueado?`<button class="btn ghost block" onclick="suspender(${J(c.id)},false)">Reactivar acceso</button>`:`<button class="btn danger block" onclick="suspender(${J(c.id)},true,this)">Suspender acceso ya</button>`}
    <span class="small">${esc(n)} compra de ${SES_MIN} a ${SES_MAX} sesiones y las descuenta desde su teléfono. Tú confirmas cada pago y ves cuándo usó cada sesión.</span></section>`}
 async function verComprobante(cid,id){let d;try{d=(await S.db.doc(`clientes/${cid}/comprobantes/${id}`).get()).data()}catch(e){}if(!d)return toast('No se encontró el comprobante');
