@@ -126,10 +126,33 @@ try {
   const desc2 = await K.evaluate(() => S.ses.descFin > Date.now());
   if (!desc2) problemas.push('Al cerrar la vuelta de superserie debía arrancar el descanso');
   await K.evaluate(() => { marcar(0, 0); marcar(0, 2); });
+  // Calculadora de discos (press de banca a 60 kg → 20 kg por lado) y calentamiento automático
+  await K.evaluate(() => { cerrarHoja(); menuEj(0); });
+  await K.getByRole('button', { name: 'Calculadora de discos' }).click();
+  await ver(K, 'En cada lado');
+  const lado = await K.locator('#sheet .tile b').first().innerText();
+  if (lado.trim() !== '20 kg') problemas.push('Discos por lado: esperaba 20 kg y dio ' + lado);
+  await foto(K, 'discos');
+  await K.evaluate(() => { cerrarHoja(); menuEj(3); });
+  await K.getByRole('button', { name: 'Agregar calentamiento' }).click();
+  const cal = await K.evaluate(() => S.ses.ejercicios[3].sets.filter(x => x.t === 'w').map(x => x.kg));
+  if (JSON.stringify(cal) !== '[8,12,16]') problemas.push('Calentamiento: esperaba [8,12,16] y dio ' + JSON.stringify(cal));
+  // Ejercicio por tiempo: plancha de 1:15
+  await K.evaluate(() => { const m = modoDe('Plancha'); S.ses.ejercicios.push({ k: uid(), nombre: 'Plancha', modo: m, desc: 60, sig: false, nota: '', sets: [{ ...serieNueva(m), ok: false, t: 'n' }] }); render(); const i = S.ses.ejercicios.length - 1; setSet(i, 0, 'min', 1); setSet(i, 0, 'segs', 15); marcar(i, 0); S.ses.descFin = 0; render(); });
+  await ver(K, 'Min');
   await foto(K, 'sesion');
   await K.evaluate(() => abrirTerminar());
   await K.click('#btnGuardar');
   await ver(K, 'récord');
+  await ver(K, '¡Buen entreno!');
+  await K.waitForSelector('#resImg');
+  await foto(K, 'compartir');
+  const descarga = K.waitForEvent('download', { timeout: 10000 }).catch(() => null);
+  await K.getByRole('button', { name: 'Guardar imagen' }).click();
+  if (!(await descarga)) problemas.push('No se descargó la imagen del entreno');
+  await K.evaluate(() => cerrarHoja());
+  const plancha = await K.evaluate(() => S.hist[0]?.detalle?.find(e => e.nombre === 'Plancha'));
+  if (!plancha || plancha.modo !== 'tiempo' || plancha.sets[0].seg !== 75) problemas.push('No se guardó la plancha por tiempo: ' + JSON.stringify(plancha));
   const guardado = await K.evaluate(() => S.hist[0]?.detalle?.[0]?.sets);
   if (!guardado || guardado[0].t !== 'w' || guardado[0].rpe !== 8.5) problemas.push('No se guardó tipo/RPE: ' + JSON.stringify(guardado));
   // Etapa 3: segundo entreno y estadísticas
@@ -142,6 +165,7 @@ try {
   await K.evaluate(() => { S.ses.ejercicios[0].sets[0].kg = 65; marcar(0, 0); marcar(0, 1); S.ses.descFin = 0; abrirTerminar(); });
   await K.click('#btnGuardar');
   await K.waitForFunction(() => !S.ses && S.hist.length === 2, null, { timeout: 15000 });
+  await K.evaluate(() => cerrarHoja());
   await K.evaluate(() => { S.progTab = 'resumen'; irA('progreso'); });
   await ver(K, 'Por semana'); await ver(K, 'Series por músculo'); await ver(K, 'Pecho');
   await K.getByRole('button', { name: /entrenos?$/ }).first().click();
@@ -157,6 +181,25 @@ try {
   await K.locator('details.hrow summary').first().click();
   await ver(K, '65×8');
   await foto(K, 'prog-historial');
+  // Editar un entreno guardado
+  const idEd = await K.evaluate(() => S.hist[0].id);
+  await K.locator('details.hrow[open]').getByRole('button', { name: 'Editar' }).click();
+  await ver(K, 'Editando:');
+  await K.evaluate(() => { setSet(0, 0, 'kg', 67.5); abrirTerminar(); });
+  await K.fill('#fmin', '48');
+  await K.click('#btnGuardar');
+  await ver(K, 'Cambios guardados');
+  await K.waitForFunction(id => { const h = S.hist.find(x => x.id === id); return h && h.min === 48 && h.detalle[0].sets[0].kg === 67.5; }, idEd, { timeout: 15000 });
+  if (await K.evaluate(() => S.hist.length) !== 2) problemas.push('Editar no debía crear otro entreno');
+  // Borrar un entreno (uno de prueba)
+  await K.evaluate(() => { iniciar('libre'); const m = 'kg'; S.ses.ejercicios.push({ k: uid(), nombre: 'Curl con barra', modo: m, desc: 0, sig: false, nota: '', sets: [{ kg: 20, reps: 10, ok: true, t: 'n' }] }); abrirTerminar(); });
+  await K.click('#btnGuardar');
+  await K.waitForFunction(() => !S.ses && S.hist.length === 3, null, { timeout: 15000 });
+  await K.evaluate(() => { cerrarHoja(); S.tab = 'progreso'; S.progTab = 'historial'; render(); });
+  await K.locator('details.hrow summary').first().click();
+  await K.locator('details.hrow[open]').getByRole('button', { name: 'Borrar' }).click();
+  await K.locator('details.hrow[open]').getByRole('button', { name: 'Toca otra vez para borrar' }).click();
+  await K.waitForFunction(() => S.hist.length === 2, null, { timeout: 15000 });
   await K.evaluate(() => { S.progTab = 'cuerpo'; render(); });
   // medidas privadas
   await K.evaluate(() => irA('progreso'));

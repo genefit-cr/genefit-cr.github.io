@@ -627,13 +627,26 @@ function filaRutina(a,tipo,quien){const exs=a.ejercicios||[];
    Ejercicio: {k,nombre,desc,sets,sig,nota}  sig=true: va en superserie con el siguiente */
 const TIPOS={n:{l:'Normal'},w:{l:'Calentamiento',c:'C',col:'var(--warn)'},f:{l:'Al fallo',c:'F',col:'var(--danger)'},d:{l:'Drop set',c:'D',col:'var(--gold)'}};
 const RPES=[6,7,7.5,8,8.5,9,9.5,10];
+/* Cómo se mide cada ejercicio: kg (peso × reps) · tiempo (min:seg) · dist (km y min) */
+const MODOS={kg:'Peso y reps',tiempo:'Tiempo',dist:'Distancia y tiempo'};
+function modoDe(n){const e=info(n),id=String(e?.id||n).toLowerCase(),g=e?.g;
+  if(/plank|plancha|_hold|wall_sit|isometric|l-sit|static|dead_hang|flexed_arm_hang/.test(id)||g==='Estiramientos')return'tiempo';
+  if(g==='Cardio'&&/run|treadmill|bike|bicycl|cycling|elliptical|rowing|walk|stair|sprint|trail|jog|swim|step_mill|recumbent/.test(id))return'dist';
+  if(g==='Cardio')return'tiempo';
+  return'kg'}
+const mmssC=s=>{s=Math.round(+s||0);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+/* Texto de una serie según sus datos */
+const serieTxt=x=>x.km!=null?`${fmt(x.km)} km · ${mmssC(x.seg)}`:(x.seg!=null&&x.kg==null)?mmssC(x.seg):`${fmt(x.kg)}×${x.reps}`;
+const serieNueva=(modo,b={})=>modo==='tiempo'?{seg:b.seg??60}:modo==='dist'?{km:b.km??1,seg:b.seg??600}:{kg:b.kg??0,reps:b.reps??10};
 const DESCANSOS=[0,30,45,60,90,120,180,240];
 function iniciar(tipo,id){
   if(S.ses){abrirSesion();return toast('Ya tienes un entrenamiento en curso')}
   const r=tipo==='asig'?S.asig.find(x=>x.id===id):tipo==='rut'?S.rut.find(x=>x.id===id):{nombre:'Entrenamiento libre',ejercicios:[]};if(!r)return;
   S.ses={rutina:r.nombre,inicio:Date.now(),descFin:0,descTotal:0,
-    ejercicios:(r.ejercicios||[]).map(e=>{const sg=progresionActiva()?sugerencia(e.nombre,+e.reps):null,peso=sg&&sg.kg>=(+e.kg||0)?sg.kg:+e.kg||0;
-      return {k:uid(),nombre:e.nombre,desc:+e.desc||90,sig:!!e.sig,nota:'',obj:+e.reps||0,sug:sg&&peso===sg.kg?{accion:sg.accion,txt:sg.txt}:null,sets:Array.from({length:+e.series||1},()=>({kg:peso,reps:+e.reps||10,ok:false,t:'n'}))}})};
+    ejercicios:(r.ejercicios||[]).map(e=>{const modo=e.modo||modoDe(e.nombre);
+      if(modo!=='kg')return {k:uid(),nombre:e.nombre,modo,desc:+e.desc||60,sig:!!e.sig,nota:'',sets:Array.from({length:+e.series||1},()=>({...serieNueva(modo,{seg:modo==='dist'?(+e.min||20)*60:(+e.seg||60),km:+e.km||1}),ok:false,t:'n'}))};
+      const sg=progresionActiva()?sugerencia(e.nombre,+e.reps):null,peso=sg&&sg.kg>=(+e.kg||0)?sg.kg:+e.kg||0;
+      return {k:uid(),nombre:e.nombre,modo,desc:+e.desc||90,sig:!!e.sig,nota:'',obj:+e.reps||0,sug:sg&&peso===sg.kg?{accion:sg.accion,txt:sg.txt}:null,sets:Array.from({length:+e.series||1},()=>({kg:peso,reps:+e.reps||10,ok:false,t:'n'}))}})};
   guardarSes();abrirSesion();pedirWake()}
 function abrirSesion(){S.vista='sesion';render();scrollTo(0,0)}
 function minimizar(){S.vista=null;S.tab='hoy';render();scrollTo(0,0)}
@@ -641,14 +654,14 @@ let wake=null;function pedirWake(){try{navigator.wakeLock?.request('screen').the
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&S.vista==='sesion')pedirWake()});
 function ultimo(n){for(const h of S.hist){const e=(h.detalle||[]).find(x=>x.nombre===n);if(e)return e.sets}return null}
 const efectiva=x=>x.t!=='w';
-function totales(){const all=S.ses.ejercicios.flatMap(e=>e.sets),ok=all.filter(x=>x.ok);return{all:all.length,hechas:ok.length,vol:ok.filter(efectiva).reduce((a,x)=>a+x.kg*x.reps,0)}}
-function siguiente(){for(const e of S.ses.ejercicios){const j=e.sets.findIndex(x=>!x.ok);if(j>=0)return `${e.nombre} · serie ${etiqueta(e.sets,j)} · ${fmt(e.sets[j].kg)} kg × ${e.sets[j].reps}`}return 'Terminaste todas las series'}
+function totales(){const all=S.ses.ejercicios.flatMap(e=>e.sets),ok=all.filter(x=>x.ok);return{all:all.length,hechas:ok.length,vol:ok.filter(x=>efectiva(x)&&x.kg!=null).reduce((a,x)=>a+x.kg*(x.reps||0),0)}}
+function siguiente(){for(const e of S.ses.ejercicios){const j=e.sets.findIndex(x=>!x.ok);if(j>=0)return `${e.nombre} · serie ${etiqueta(e.sets,j)} · ${serieTxt(e.sets[j])}`}return 'Terminaste todas las series'}
 /* Letra de superserie de cada ejercicio ('' si va solo) */
 function grupos(L){let n=0;return L.map((e,i)=>{const unido=e.sig&&i<L.length-1,previo=i>0&&L[i-1].sig;if(!unido&&!previo)return'';if(!previo)n++;return String.fromCharCode(64+n)})}
 /* Número de la serie: los calentamientos no cuentan y se marcan con C; al fallo F; drop D */
 function etiqueta(sets,j){const x=sets[j];if(x.t&&x.t!=='n')return TIPOS[x.t].c;return String(sets.slice(0,j+1).filter(s=>s.t!=='w').length)}
 function vSesion(){const s=S.ses,t=totales(),G=grupos(s.ejercicios);
-  let h=`<div class="ses-top"><div class="row between"><button class="link" onclick="minimizar()">Minimizar</button><b style="font-family:var(--display);font-size:17px;text-align:center" class="grow">${esc(s.rutina)}</b><button class="btn sm primary" onclick="abrirTerminar()">Terminar</button></div>
+  let h=`<div class="ses-top"><div class="row between"><button class="link" onclick="minimizar()">Minimizar</button><b style="font-family:var(--display);font-size:17px;text-align:center" class="grow">${s.editId?'Editando: ':''}${esc(s.titulo||s.rutina)}</b><button class="btn sm primary" onclick="abrirTerminar()">${s.editId?'Guardar':'Terminar'}</button></div>
     <div class="grid3"><div><div class="tiny" id="tLabel">Tiempo</div><div class="big" id="clock" style="font-size:22px">0:00</div></div><div><div class="tiny">Series</div><div class="big" style="font-size:22px">${t.hechas}<span style="color:var(--dim)">/${t.all}</span></div></div><div><div class="tiny">Volumen</div><div class="big" style="font-size:22px">${kg(t.vol)} <span class="u">kg</span></div></div></div>
     <div class="prog"><i id="bar" style="width:${t.all?t.hechas/t.all*100:0}%"></i></div>
     <div class="rest" id="descanso" hidden><div class="ring" id="rclock">0:00</div><div class="grow"><b style="font-size:15px">Descanso</b><div style="font-size:13px;color:var(--ok-fg)">Siguiente: ${esc(siguiente())}</div></div>
@@ -661,23 +674,32 @@ function vSesion(){const s=S.ses,t=totales(),G=grupos(s.ejercicios);
       ${e.sug?`<div class="sug ${e.sug.accion}">${e.sug.accion==='sube'?'▲':'='} ${esc(e.sug.txt)}</div>`:''}
       ${(z=>z.length?`<div class="aviso"><span class="grow">⚠ Carga ${esc(z.join(', '))}, donde te duele.</span><button class="btn sm ghost" onclick="verAlternativas(${i})">Alternativas</button></div>`:'')(enRiesgo(e.nombre))}
       ${e.nota?`<div class="notice" style="color:var(--fg);padding:8px 12px"><b>Nota:</b> ${esc(e.nota)}</div>`:''}
-      <div class="sets"><span class="h">Serie</span><span class="h">Anterior</span><span class="h">Kg</span><span class="h">Reps</span><span class="h" aria-hidden="true">✓</span>
+      <div class="sets"><span class="h">Serie</span><span class="h">Anterior</span>${(([a,b])=>`<span class="h">${a}</span><span class="h">${b}</span>`)({kg:['Kg','Reps'],tiempo:['Min','Seg'],dist:['Km','Min']}[e.modo||'kg'])}<span class="h" aria-hidden="true">✓</span>
       ${e.sets.map((x,j)=>{const pv=prev?.[j],d=x.ok?'done':'',lb=etiqueta(e.sets,j),tp=TIPOS[x.t||'n'];return `<button class="n ${d}" style="${tp.col?'color:'+tp.col:''}" onclick="menuSerie(${i},${j})" aria-label="Serie ${lb}: ${tp.l}${x.rpe?', RPE '+x.rpe:''}. Cambiar tipo o RPE">${lb}${x.rpe?`<small>@${fmt(x.rpe)}</small>`:''}</button>
-        <button class="pv ${d}" onclick="copiarPrev(${i},${j})" ${pv?`aria-label="Usar lo de la vez pasada: ${fmt(pv.kg)} kg por ${pv.reps}"`:'disabled aria-label="Sin dato anterior"'}>${pv?`${fmt(pv.kg)}×${pv.reps}`:'—'}</button>
-        <input class="${d}" id="kg-${e.k||i}-${j}" type="number" inputmode="decimal" step="2.5" min="0" value="${x.kg}" aria-label="Kilos serie ${lb}" onchange="setSet(${i},${j},'kg',this.value)">
-        <input class="${d}" id="rp-${e.k||i}-${j}" type="number" inputmode="numeric" min="0" value="${x.reps}" aria-label="Repeticiones serie ${lb}" onchange="setSet(${i},${j},'reps',this.value)">
+        <button class="pv ${d}" onclick="copiarPrev(${i},${j})" ${pv?`aria-label="Usar lo de la vez pasada: ${serieTxt(pv)}"`:'disabled aria-label="Sin dato anterior"'}>${pv?serieTxt(pv):'—'}</button>
+        ${camposSerie(e,i,x,j,d,lb)}
         <button class="check ${x.ok?'on':''}" aria-pressed="${x.ok}" aria-label="Marcar serie ${lb}" onclick="marcar(${i},${j})">${IC.check}</button>`}).join('')}</div>
       <button class="btn sm ghost block" style="border-style:dashed" onclick="otraSerie(${i})">+ Agregar serie</button></section>`});
-  return h+`<button class="btn ghost block" onclick="abrirBiblioteca(n=>{S.ses.ejercicios.push({k:uid(),nombre:n,desc:90,sig:false,nota:'',sets:[{kg:0,reps:10,ok:false,t:'n'}]});guardarSes();render()})">+ Agregar ejercicio</button>
-    <button class="btn danger block" onclick="descartar(this)">Descartar entrenamiento</button></div>`}
-function setSet(i,j,k,v){const x=S.ses.ejercicios[i].sets[j];x[k]=Math.max(0,+String(v).replace(',','.')||0);guardarSes()}
-function copiarPrev(i,j){const e=S.ses.ejercicios[i],pv=ultimo(e.nombre)?.[j];if(!pv)return;Object.assign(e.sets[j],{kg:pv.kg,reps:pv.reps});guardarSes();render()}
+  return h+`<button class="btn ghost block" onclick="abrirBiblioteca(n=>{const m=modoDe(n);S.ses.ejercicios.push({k:uid(),nombre:n,modo:m,desc:m==='kg'?90:60,sig:false,nota:'',sets:[{...serieNueva(m),ok:false,t:'n'}]});guardarSes();render()})">+ Agregar ejercicio</button>
+    <button class="btn danger block" onclick="descartar(this)">${s.editId?'Descartar cambios':'Descartar entrenamiento'}</button></div>`}
+function camposSerie(e,i,x,j,d,lb){const inp=(campo,val,et,step,modoT)=>`<input class="${d}" id="${campo}-${e.k||i}-${j}" type="number" inputmode="${modoT}" step="${step}" min="0" value="${val}" aria-label="${et} serie ${lb}" onchange="setSet(${i},${j},'${campo}',this.value)">`;
+  const m=e.modo||'kg';
+  if(m==='tiempo')return inp('min',Math.floor((x.seg||0)/60),'Minutos',1,'numeric')+inp('segs',(x.seg||0)%60,'Segundos',5,'numeric');
+  if(m==='dist')return inp('km',x.km??0,'Kilómetros',0.1,'decimal')+inp('dmin',Math.round((x.seg||0)/60),'Minutos',1,'numeric');
+  return inp('kg',x.kg,'Kilos',2.5,'decimal')+inp('reps',x.reps,'Repeticiones',1,'numeric')}
+function setSet(i,j,k,v){const x=S.ses.ejercicios[i].sets[j],n=Math.max(0,+String(v).replace(',','.')||0);
+  if(k==='min')x.seg=Math.round(n)*60+((x.seg||0)%60);
+  else if(k==='segs')x.seg=Math.floor((x.seg||0)/60)*60+Math.min(59,Math.round(n));
+  else if(k==='dmin')x.seg=Math.round(n*60);
+  else x[k]=n;
+  guardarSes()}
+function copiarPrev(i,j){const e=S.ses.ejercicios[i],pv=ultimo(e.nombre)?.[j];if(!pv)return;for(const k of ['kg','reps','seg','km'])if(pv[k]!=null)e.sets[j][k]=pv[k];guardarSes();render()}
 function marcar(i,j){const L=S.ses.ejercicios,e=L[i],x=e.sets[j];x.ok=!x.ok;
-  if(x.ok){prepararAudio();
+  if(x.ok&&!S.ses.editId){prepararAudio();
     if(e.sig&&i<L.length-1){toast('Superserie: sigue con '+L[i+1].nombre)}
     else if(e.desc>0){S.ses.descTotal=e.desc;S.ses.descFin=Date.now()+e.desc*1000;avisado=false;pedirPermisoAviso()}}
   guardarSes();render()}
-function otraSerie(i){const e=S.ses.ejercicios[i],u=e.sets.at(-1)||{kg:0,reps:10};e.sets.push({kg:u.kg,reps:u.reps,ok:false,t:u.t==='w'?'n':(u.t||'n')});guardarSes();render()}
+function otraSerie(i){const e=S.ses.ejercicios[i],u=e.sets.at(-1)||serieNueva(e.modo||'kg');e.sets.push({...serieNueva(e.modo||'kg',u),ok:false,t:u.t==='w'?'n':(u.t||'n')});guardarSes();render()}
 function quitarEj(i,b){if(!b.dataset.ok){b.dataset.ok=1;b.textContent='Toca otra vez para quitarlo';return}S.ses.ejercicios.splice(i,1);guardarSes();cerrarHoja();render()}
 /* Hoja de una serie: tipo y RPE */
 function menuSerie(i,j){const e=S.ses.ejercicios[i],x=e.sets[j];
@@ -693,14 +715,39 @@ function menuEj(i){const L=S.ses.ejercicios,e=L[i],sig=L[i+1];
   abrirHoja(`<div class="row between"><h2>${esc(e.nombre)}</h2><button class="iconbtn" onclick="cerrarHoja();render()" aria-label="Cerrar">${IC.x}</button></div>
    <div class="body"><span class="lbl">Descanso entre series</span><div class="chips">${DESCANSOS.map(d=>`<button class="chip sm" aria-pressed="${e.desc===d}" onclick="S.ses.ejercicios[${i}].desc=${d};guardarSes();render();menuEj(${i})">${d?(d<60?d+' s':mmss(d)):'Apagado'}</button>`).join('')}</div>
    ${sig?`<button class="btn ${e.sig?'ghost':'primary'} block" onclick="S.ses.ejercicios[${i}].sig=${!e.sig};guardarSes();render();menuEj(${i})">${e.sig?'Quitar la superserie':'Hacer superserie con «'+esc(sig.nombre)+'»'}</button><span class="small">En superserie no hay descanso entre un ejercicio y el otro: descansas al terminar la vuelta.</span>`:''}
+   <span class="lbl">Cómo se mide</span><div class="chips">${Object.entries(MODOS).map(([k,l])=>`<button class="chip sm" aria-pressed="${(e.modo||'kg')===k}" onclick="cambiarModoEj(${i},'${k}')">${l}</button>`).join('')}</div>
+   ${(e.modo||'kg')==='kg'?`<div class="grid2"><button class="btn ghost" onclick="calcDiscos(${i})">Calculadora de discos</button><button class="btn ghost" onclick="agregarCalentamiento(${i})">Agregar calentamiento</button></div>`:''}
    <div class="field"><label class="lbl" for="ejNota">Nota</label><textarea class="input" id="ejNota" maxlength="200" placeholder="Ej: asiento en 4, agarre cerrado" oninput="S.ses.ejercicios[${i}].nota=this.value;guardarSes()">${esc(e.nota||'')}</textarea></div>
    <div class="grid2"><button class="btn ghost" ${i?'':'disabled'} onclick="moverEj(${i},-1)">Subir</button><button class="btn ghost" ${sig?'':'disabled'} onclick="moverEj(${i},1)">Bajar</button></div>
    <div class="grid2"><button class="btn ghost" onclick="reemplazarEj(${i})">Cambiar ejercicio</button><button class="btn danger" onclick="quitarEj(${i},this)">Quitar</button></div>
    <button class="btn primary block" onclick="cerrarHoja();render()">Listo</button></div>`)}
+function cambiarModoEj(i,m){const e=S.ses.ejercicios[i];if((e.modo||'kg')===m)return;e.modo=m;e.sug=null;
+  e.sets=e.sets.map(x=>({...serieNueva(m),ok:x.ok,t:x.t||'n',...(x.rpe?{rpe:x.rpe}:{})}));if(m!=='kg'&&e.desc>60)e.desc=60;guardarSes();render();menuEj(i)}
+/* Calculadora de discos: qué poner a cada lado de la barra */
+const DISCOS=[25,20,15,10,5,2.5,1.25],COLDISCO={25:'#E5484D',20:'#3E7BFA',15:'#F5C542',10:'#3FB950',5:'#E6EDF3',2.5:'#9AA1AC',1.25:'#6E7681'};
+function discos(total,barra){let lado=(total-barra)/2;if(lado<0)return null;const out=[];for(const d of DISCOS)while(lado>=d-1e-9){out.push(d);lado-=d}return{out,resto:Math.round(lado*200)/100}}
+const pesoTrabajo=e=>{const ef=e.sets.filter(x=>x.t!=='w'&&x.kg>0);return ef.length?Math.max(...ef.map(x=>x.kg)):(e.sets[0]?.kg||0)};
+function calcDiscos(i,kgx,barra){const e=S.ses.ejercicios[i];S.calc={i,kg:kgx??(pesoTrabajo(e)||60),barra:barra??S.calc?.barra??20};const c=S.calc,r=discos(c.kg,c.barra);
+  const svg=r?(()=>{let x=150,h='';const alto=d=>({25:110,20:110,15:96,10:82,5:62,2.5:50,1.25:42}[d]);
+    h+=`<rect x="10" y="66" width="280" height="8" rx="4" fill="#C9CED6"/><rect x="138" y="58" width="24" height="24" rx="4" fill="#9AA1AC"/>`;
+    let xd=162,xi=138;for(const d of r.out){const a=alto(d),w=d>=10?16:11;h+=`<rect x="${xd}" y="${70-a/2}" width="${w}" height="${a}" rx="3" fill="${COLDISCO[d]}"/><rect x="${xi-w}" y="${70-a/2}" width="${w}" height="${a}" rx="3" fill="${COLDISCO[d]}"/>`;xd+=w+2;xi-=w+2}
+    return `<svg viewBox="0 0 300 140" width="100%" role="img" aria-label="Barra de ${fmt(c.barra)} kg con ${r.out.length?r.out.map(fmt).join(', '):'ningún disco'} por lado">${h}</svg>`})():'';
+  abrirHoja(`<div class="row between"><h2>Calculadora de discos</h2><button class="iconbtn" onclick="cerrarHoja();render()" aria-label="Cerrar">${IC.x}</button></div>
+   <div class="body"><div class="grid2"><div class="field"><label class="lbl" for="cd-kg">Peso total (kg)</label><input class="input num" id="cd-kg" type="number" inputmode="decimal" step="2.5" min="0" value="${c.kg}" onchange="calcDiscos(${i},+this.value||0)"></div>
+    <div class="field"><span class="lbl">Barra</span><div class="chips">${[20,15,10].map(b=>`<button class="chip sm" aria-pressed="${c.barra===b}" onclick="calcDiscos(${i},S.calc.kg,${b})">${b} kg</button>`).join('')}</div></div></div>
+   ${r?`${svg}<div class="tile" style="background:var(--raise)"><span class="tiny">En cada lado</span><b style="font-size:20px">${r.out.length?r.out.map(fmt).join(' + ')+' kg':'Solo la barra'}</b>${r.resto?`<span class="small" style="color:var(--warn)">No sale exacto: sobran ${fmt(r.resto)} kg. Prueba con ${fmt(c.kg-r.resto)} kg.</span>`:''}</div>`:`<div class="notice">El peso es menor que la barra de ${c.barra} kg.</div>`}
+   <button class="btn primary block" onclick="usarPeso(${i},S.calc.kg)">Usar ${fmt(c.kg)} kg en las series</button></div>`)}
+function usarPeso(i,v){for(const x of S.ses.ejercicios[i].sets)if(x.t!=='w')x.kg=v;guardarSes();cerrarHoja();render();toast(`${fmt(v)} kg en las series de trabajo`)}
+/* Calentamiento: 3 series antes del peso de trabajo (40 %, 60 % y 80 %) */
+function agregarCalentamiento(i){const e=S.ses.ejercicios[i],w=pesoTrabajo(e);if(!w)return toast('Pon primero el peso de trabajo');
+  const barra=/barra/.test(equipo(e.nombre)),paso=barra?2.5:1,min=barra?20:paso,red=v=>Math.max(min,Math.round(v/paso)*paso);
+  const nuevas=[[0.4,10],[0.6,5],[0.8,3]].map(([p,r])=>({kg:red(w*p),reps:r,ok:false,t:'w'})).filter((x,k,a)=>x.kg<w&&(!k||x.kg>a[k-1].kg));
+  if(!nuevas.length)return toast('El peso es muy liviano para calentar con menos');
+  e.sets=[...nuevas,...e.sets.filter(x=>x.t!=='w'||x.ok)];guardarSes();cerrarHoja();render();toast(`${nuevas.length} series de calentamiento agregadas`)}
 function moverEj(i,d){const L=S.ses.ejercicios,k=i+d;if(k<0||k>=L.length)return;[L[i],L[k]]=[L[k],L[i]];guardarSes();render();menuEj(k)}
 function reemplazarEj(i){abrirBiblioteca(n=>{S.ses.ejercicios[i].nombre=n;guardarSes();render()})}
 function ajustar(d){if(!d){S.ses.descFin=0}else{S.ses.descFin+=d*1000;S.ses.descTotal=Math.max(1,S.ses.descTotal+d)}guardarSes();tick()}
-function descartar(b){if(!b.dataset.ok){b.dataset.ok=1;b.textContent='Toca otra vez para descartar';return}S.ses=null;guardarSes();try{wake?.release()}catch(e){}wake=null;S.vista=null;S.tab='hoy';render();toast('Entrenamiento descartado')}
+function descartar(b){if(!b.dataset.ok){b.dataset.ok=1;b.textContent='Toca otra vez para descartar';return}const ed=S.ses?.editId;S.ses=null;if(ed){guardarSes();S.vista=null;S.tab='progreso';render();return toast('No se cambió nada')}guardarSes();try{wake?.release()}catch(e){}wake=null;S.vista=null;S.tab='hoy';render();toast('Entrenamiento descartado')}
 /* Aviso de fin de descanso: vibración, pitido y notificación si la app está en segundo plano */
 let audio=null;
 function prepararAudio(){try{audio=audio||new(window.AudioContext||window.webkitAudioContext)();if(audio.state==='suspended')audio.resume()}catch(e){}}
@@ -719,32 +766,86 @@ function tick(){clearTimeout(timer);if(!S.ses)return;
     if(rest>0){box.hidden=false;$('#rclock').textContent=mmss(rest);$('#bar').style.width=Math.min(100,rest/S.ses.descTotal*100)+'%'}
     else{box.hidden=true;const t=totales();$('#bar').style.width=(t.all?t.hechas/t.all*100:0)+'%'}}
   timer=setTimeout(tick,S.ses.descFin||S.vista==='sesion'?250:1000)}
-function abrirTerminar(){const t=totales(),min=Math.max(1,Math.round((Date.now()-S.ses.inicio)/60000));
-  abrirHoja(`<div class="row between"><h2>Guardar entrenamiento</h2><button class="iconbtn" onclick="cerrarHoja()" aria-label="Cerrar">${IC.x}</button></div>
+function abrirTerminar(){const t=totales(),ed=S.ses.editId,min=ed?(S.ses.editMin||1):Math.max(1,Math.round((Date.now()-S.ses.inicio)/60000));
+  abrirHoja(`<div class="row between"><h2>${ed?'Guardar cambios':'Guardar entrenamiento'}</h2><button class="iconbtn" onclick="cerrarHoja()" aria-label="Cerrar">${IC.x}</button></div>
    <div class="body"><div class="grid3"><div class="tile" style="background:var(--raise)"><span class="tiny">Duración</span><span class="big" style="font-size:22px">${min} <span class="u">min</span></span></div><div class="tile" style="background:var(--raise)"><span class="tiny">Series</span><span class="big" style="font-size:22px">${t.hechas}</span></div><div class="tile" style="background:var(--raise)"><span class="tiny">Volumen</span><span class="big" style="font-size:22px">${kg(t.vol)}</span></div></div>
    ${t.hechas?'':'<div class="notice">No marcaste ninguna serie como hecha. Marca con ✓ las series que hiciste para que cuenten.</div>'}
-   <div class="field"><label class="lbl" for="ft">Título</label><input class="input" id="ft" value="${esc(S.ses.rutina)}" maxlength="80"></div>
-   <div class="field"><label class="lbl" for="fn">Nota para Génesis (opcional)</label><textarea class="input" id="fn" maxlength="300" placeholder="¿Cómo te sentiste?"></textarea></div>
-   <button class="btn primary go" id="btnGuardar" onclick="guardarSesion()">Guardar</button></div>`)}
+   <div class="field"><label class="lbl" for="ft">Título</label><input class="input" id="ft" value="${esc(S.ses.titulo||S.ses.rutina)}" maxlength="80"></div>
+   ${ed?`<div class="field"><label class="lbl" for="fmin">Duración (min)</label><input class="input num" id="fmin" type="number" inputmode="numeric" min="1" value="${min}"></div>`:''}
+   <div class="field"><label class="lbl" for="fn">Nota para Génesis (opcional)</label><textarea class="input" id="fn" maxlength="300" placeholder="¿Cómo te sentiste?">${esc(S.ses.nota||'')}</textarea></div>
+   <button class="btn primary go" id="btnGuardar" onclick="guardarSesion()">${ed?'Guardar cambios':'Guardar'}</button></div>`)}
 async function guardarSesion(){
   const s=S.ses,titulo=$('#ft').value.trim()||s.rutina,nota=$('#fn').value.trim();$('#btnGuardar').disabled=true;
-  const f=Date.now(),prs=[],ejercicios=[],detalle=[],recW=[];let series=0,reps=0,vol=0;
-  s.ejercicios.forEach(e=>{const ok=e.sets.filter(x=>x.ok);if(!ok.length)return;const ef=ok.filter(efectiva);
+  const ed=s.editId,f=ed?s.editFecha:Date.now(),prs=[],ejercicios=[],detalle=[],recW=[];let series=0,reps=0,vol=0;
+  s.ejercicios.forEach(e=>{const ok=e.sets.filter(x=>x.ok);if(!ok.length)return;const ef=ok.filter(efectiva),modo=e.modo||'kg';
+    const extra=x=>{const o={};if(x.t&&x.t!=='n')o.t=x.t;if(x.rpe)o.rpe=x.rpe;return o};
+    if(modo!=='kg'){const base=ef.length?ef:ok,top=modo==='dist'?base.reduce((a,x)=>(x.km||0)>(a.km||0)?x:a):base.reduce((a,x)=>(x.seg||0)>(a.seg||0)?x:a);
+      series+=ef.length;ejercicios.push({nombre:e.nombre,series:ef.length,mejor:serieTxt(top)});
+      detalle.push({nombre:e.nombre,modo,sets:ok.map(x=>({...(modo==='dist'?{km:x.km||0,seg:x.seg||0}:{seg:x.seg||0}),...extra(x)}))});return}
     const m=(ef.length?ef:ok).reduce((a,x)=>x.kg>a.kg||(x.kg===a.kg&&x.reps>a.reps)?x:a);
     series+=ef.length;reps+=ef.reduce((a,x)=>a+x.reps,0);vol+=ef.reduce((a,x)=>a+x.kg*x.reps,0);
     ejercicios.push({nombre:e.nombre,series:ef.length,mejor:`${fmt(m.kg)} kg × ${m.reps}`});
-    detalle.push({nombre:e.nombre,sets:ok.map(x=>{const o={kg:x.kg,reps:x.reps};if(x.t&&x.t!=='n')o.t=x.t;if(x.rpe)o.rpe=x.rpe;return o})});
+    detalle.push({nombre:e.nombre,sets:ok.map(x=>({kg:x.kg,reps:x.reps,...extra(x)}))});
     const rec=S.recs.find(r=>r.id===slug(e.nombre));if(ef.length&&m.kg>0&&(!rec||m.kg>rec.kg)){prs.push(e.nombre);recW.push([slug(e.nombre),{nombre:e.nombre,kg:m.kg,reps:m.reps,fecha:f}])}});
-  const min=Math.max(1,Math.round((f-s.inicio)/60000)),id='w'+uid();
+  const min=ed?Math.max(1,Math.round(+($('#fmin')?.value)||s.editMin||1)):Math.max(1,Math.round((f-s.inicio)/60000)),id=ed||'w'+uid();
   const ok=await escribir(async()=>{
     await S.db.doc(BASE()+'/historial/'+id).set({titulo,rutina:s.rutina,fecha:f,min,series,reps,volumen:Math.round(vol),ejercicios,prs,nota,detalle});
     for(const [k,v] of recW)await S.db.doc(BASE()+'/records/'+k).set(v);
-    await S.db.doc(BASE()).update({ultimo:f,ultTitulo:titulo,ultMin:min,ultPRs:prs.length,ultVol:Math.round(vol)});
+    if(!ed)await S.db.doc(BASE()).update({ultimo:f,ultTitulo:titulo,ultMin:min,ultPRs:prs.length,ultVol:Math.round(vol)});
   });
   if(!ok){const b=$('#btnGuardar');if(b)b.disabled=false;return}
   {const H2=[{id,fecha:f,prs,detalle,series,volumen:Math.round(vol)},...S.hist.filter(h=>h.id!==id)];S.db.doc(BASE()).update({tend:tendencias(H2)}).catch(e=>console.warn('tend',e));actualizarRetos(H2)}
-  cerrarHoja();S.ses=null;guardarSes();try{wake?.release()}catch(e){}wake=null;S.vista=null;S.tab='hoy';render();scrollTo(0,0);
-  toast(prs.length?`¡Guardado! ${prs.length} récord${prs.length>1?'s':''} nuevo${prs.length>1?'s':''}: ${prs.join(', ')}`:'¡Entrenamiento guardado! Génesis ya lo puede ver.')}
+  cerrarHoja();S.ses=null;guardarSes();try{wake?.release()}catch(e){}wake=null;S.vista=null;
+  if(ed){S.tab='progreso';S.progTab='historial';render();return toast('Cambios guardados')}
+  S.tab='hoy';render();scrollTo(0,0);
+  toast(prs.length?`¡Guardado! ${prs.length} récord${prs.length>1?'s':''} nuevo${prs.length>1?'s':''}: ${prs.join(', ')}`:'¡Entrenamiento guardado! Génesis ya lo puede ver.');
+  abrirResumen({id,titulo,fecha:f,min,series,volumen:Math.round(vol),ejercicios,prs})}
+
+/* ================= Editar, borrar y compartir entrenos guardados ================= */
+function editarEntreno(id){if(S.ses){abrirSesion();return toast('Termina o descarta primero el entreno en curso')}const h=S.hist.find(x=>x.id===id);if(!h)return;
+  S.ses={rutina:h.rutina||h.titulo,titulo:h.titulo,nota:h.nota||'',inicio:Date.now(),descFin:0,descTotal:0,editId:id,editFecha:h.fecha,editMin:h.min,
+    ejercicios:(h.detalle||[]).map(e=>({k:uid(),nombre:e.nombre,modo:e.modo||'kg',desc:90,sig:false,nota:'',sets:(e.sets||[]).map(x=>({...x,ok:true,t:x.t||'n'}))}))};
+  guardarSes();abrirSesion()}
+async function borrarEntreno(id,b){if(!b.dataset.ok){b.dataset.ok=1;b.textContent='Toca otra vez para borrar';return}
+  if(await escribir(()=>S.db.doc(BASE()+'/historial/'+id).delete(),'Entreno borrado')){const H2=S.hist.filter(h=>h.id!==id);S.db.doc(BASE()).update({tend:tendencias(H2)}).catch(()=>{});actualizarRetos(H2)}}
+/* Imagen del entreno para compartir (WhatsApp, Instagram) */
+function partirTexto(x,t,ancho){const p=String(t).split(' '),l=[];let a='';for(const w of p){const b=a?a+' '+w:w;if(x.measureText(b).width>ancho&&a){l.push(a);a=w}else a=b}if(a)l.push(a);return l}
+if(window.CanvasRenderingContext2D&&!CanvasRenderingContext2D.prototype.roundRect)CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h){this.rect(x,y,w,h)};
+async function imagenEntreno(h){try{await document.fonts?.ready}catch(e){}
+  const W=1080,H=1350,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
+  const css=getComputedStyle(document.body),ac=css.getPropertyValue('--accent').trim()||'#D4FF3A',fD='"Archivo","Arial Narrow",sans-serif',fB='"Inter",system-ui,sans-serif';
+  x.fillStyle='#0E0F12';x.fillRect(0,0,W,H);
+  const g=x.createRadialGradient(W*0.85,0,50,W*0.85,0,900);g.addColorStop(0,ac+'40');g.addColorStop(1,'#0E0F1200');x.fillStyle=g;x.fillRect(0,0,W,H);
+  const caja=(X,Y,w,hh,r,col)=>{x.fillStyle=col;x.beginPath();x.roundRect(X,Y,w,hh,r);x.fill()};
+  caja(80,80,64,64,16,ac);x.strokeStyle='#0E0F12';x.lineWidth=7;x.lineCap='round';x.beginPath();
+  for(const [a,b,cc,d] of [[96,96,96,128],[128,96,128,128],[88,104,88,120],[136,104,136,120],[96,112,128,112]]){x.moveTo(a,b);x.lineTo(cc,d)}x.stroke();
+  x.fillStyle='#F2F3F0';x.font=`900 34px ${fD}`;x.fillText('GENEFIT',162,124);
+  x.fillStyle='#A7ADB6';x.font=`600 30px ${fB}`;x.fillText(new Date(h.fecha).toLocaleDateString('es-CR',{weekday:'long',day:'numeric',month:'long'}),80,222);
+  x.fillStyle='#F2F3F0';x.font=`900 92px ${fD}`;let y=320;for(const l of partirTexto(x,h.titulo||'Entreno',W-160).slice(0,2)){x.fillText(l,80,y);y+=96}
+  y+=10;const tiles=[['Duración',`${h.min} min`],['Series',String(h.series||0)],['Volumen',`${kg(h.volumen||0)} kg`]];
+  tiles.forEach(([l,v],k)=>{const X=80+k*313;caja(X,y,293,150,28,'#17191E');x.fillStyle='#A7ADB6';x.font=`600 28px ${fB}`;x.fillText(l,X+28,y+52);x.fillStyle='#F2F3F0';x.font=`900 50px ${fD}`;x.fillText(v,X+28,y+115)});
+  y+=196;
+  if(h.prs?.length){caja(80,y,W-160,92,26,'#2E2A0A');x.fillStyle='#FFD84A';x.font=`800 34px ${fB}`;x.fillText(`🏆 ${h.prs.length} récord${h.prs.length>1?'s':''} nuevo${h.prs.length>1?'s':''}`,112,y+58);y+=124}
+  x.font=`700 34px ${fB}`;
+  for(const e of (h.ejercicios||[]).slice(0,h.prs?.length?5:6)){x.fillStyle='#F2F3F0';const n=partirTexto(x,e.nombre,640)[0];x.fillText(n,80,y+40);x.fillStyle=ac;x.textAlign='right';x.fillText(`${e.series}× ${e.mejor||''}`,W-80,y+40);x.textAlign='left';
+    x.fillStyle='#2A2E36';x.fillRect(80,y+66,W-160,2);y+=92}
+  if((h.ejercicios||[]).length>(h.prs?.length?5:6)){x.fillStyle='#A7ADB6';x.font=`600 28px ${fB}`;x.fillText(`y ${(h.ejercicios.length-(h.prs?.length?5:6))} ejercicios más`,80,y+36)}
+  caja(0,H-150,W,150,0,'#17191E');x.fillStyle='#F2F3F0';x.font=`800 34px ${fB}`;x.fillText(`Entrenando con ${ENTRENA.nombre}`,80,H-82);
+  x.fillStyle='#A7ADB6';x.font=`600 26px ${fB}`;x.fillText(location.host,80,H-40);
+  return c}
+async function abrirResumen(h){const c=await imagenEntreno(h),url=c.toDataURL('image/jpeg',0.9);S.compartir={h,c};
+  abrirHoja(`<div class="row between"><h2>¡Buen entreno!</h2><button class="iconbtn" onclick="cerrarHoja()" aria-label="Cerrar">${IC.x}</button></div>
+   <div class="body"><img src="${url}" alt="Resumen del entreno ${esc(h.titulo||'')}" style="width:100%;border-radius:16px;display:block" id="resImg">
+   <span class="small">Compártelo en WhatsApp o Instagram, o guárdalo en tu teléfono.</span>
+   <div class="grid2"><button class="btn primary" onclick="compartirImagen()">Compartir</button><button class="btn ghost" onclick="descargarImagen()">Guardar imagen</button></div>
+   <button class="btn ghost block" onclick="cerrarHoja()">Listo</button></div>`)}
+const nombreImg=()=>'genefit-'+slug(S.compartir?.h?.titulo||'entreno')+'.jpg';
+async function compartirImagen(){const c=S.compartir?.c;if(!c)return;
+  const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.9)),f=new File([blob],nombreImg(),{type:'image/jpeg'});
+  try{if(navigator.canShare?.({files:[f]})){await navigator.share({files:[f],title:'Mi entreno en Genefit'});return}}catch(e){if(e?.name==='AbortError')return}
+  descargarImagen()}
+function descargarImagen(){const c=S.compartir?.c;if(!c)return;const a=document.createElement('a');a.href=c.toDataURL('image/jpeg',0.9);a.download=nombreImg();document.body.appendChild(a);a.click();a.remove();toast('Imagen guardada')}
+function compartirEntreno(id){const h=S.hist.find(x=>x.id===id);if(h)abrirResumen(h)}
 
 /* ================= Biblioteca y ficha ================= */
 function libHead(id){return `<input class="input" id="${id}" placeholder="Buscar ejercicio${S.pick?' o escribir uno nuevo':''}" value="${esc(S.libQ)}" oninput="S.libQ=this.value;listaLib(this.dataset.l)" data-l="${id==='q2'?'libres2':'libres'}" autocomplete="off">
@@ -797,7 +898,8 @@ function vEditor(){const r=S.draft,nuevo=!S.edit.id;
    ${r.ejercicios.length?r.ejercicios.map((e,i)=>`<section class="card" style="gap:10px"><div class="row">${mini(e.nombre,'mini s44')}<button class="exname grow" style="font-size:16px" onclick="abrirFicha(${J(e.nombre)})">${esc(e.nombre)}</button>
       <button class="iconbtn" onclick="mover(${i})" ${i===0?'disabled':''} aria-label="Subir">${IC.arriba}</button><button class="iconbtn" onclick="S.draft.ejercicios.splice(${i},1);render()" aria-label="Quitar ${esc(e.nombre)}">${IC.x}</button></div>
       ${i<r.ejercicios.length-1?`<button class="chip sm" style="align-self:flex-start" aria-pressed="${!!e.sig}" onclick="S.draft.ejercicios[${i}].sig=!S.draft.ejercicios[${i}].sig;render()">${e.sig?'✓ En superserie con el siguiente':'Superserie con el siguiente'}</button>`:''}
-      <div class="grid4">${[['series','Series',1],['reps','Reps',1],['kg','Kg',2.5],['desc','Desc. s',15]].map(([k,l,st])=>`<div class="field"><label class="tiny" for="e${i}${k}">${l}</label><input class="input num" style="text-align:center;padding:10px 4px" id="e${i}${k}" type="number" inputmode="decimal" step="${st}" min="0" value="${esc(e[k])}" oninput="S.draft.ejercicios[${i}].${k}=+this.value"></div>`).join('')}</div></section>`).join(''):'<div class="notice">Agrega ejercicios desde la biblioteca. Puedes ver cómo se hace cada uno antes de agregarlo.</div>'}
+      <div class="chips">${Object.entries(MODOS).map(([k,l])=>`<button class="chip sm" aria-pressed="${(e.modo||modoDe(e.nombre))===k}" onclick="S.draft.ejercicios[${i}].modo='${k}';render()">${l}</button>`).join('')}</div>
+      <div class="grid4">${({kg:[['series','Series',1],['reps','Reps',1],['kg','Kg',2.5],['desc','Desc. s',15]],tiempo:[['series','Series',1],['seg','Seg',5],['desc','Desc. s',15]],dist:[['series','Series',1],['km','Km',0.5],['min','Min',1],['desc','Desc. s',15]]}[e.modo||modoDe(e.nombre)]).map(([k,l,st])=>`<div class="field"><label class="tiny" for="e${i}${k}">${l}</label><input class="input num" style="text-align:center;padding:10px 4px" id="e${i}${k}" type="number" inputmode="decimal" step="${st}" min="0" value="${esc(e[k])}" oninput="S.draft.ejercicios[${i}].${k}=+this.value"></div>`).join('')}</div></section>`).join(''):'<div class="notice">Agrega ejercicios desde la biblioteca. Puedes ver cómo se hace cada uno antes de agregarlo.</div>'}
    <button class="btn ghost block" onclick="abrirBiblioteca(n=>{S.draft.ejercicios.push({nombre:n,series:3,reps:10,kg:0,desc:90});render()})">+ Agregar ejercicio</button>
    <button class="btn primary go" onclick="guardarRutina()">Guardar rutina</button>
    ${nuevo?'':`<button class="btn danger block" onclick="borrarRutina(this)">Eliminar rutina</button>`}</div>`}
@@ -805,7 +907,7 @@ function mover(i){const a=S.draft.ejercicios;if(i<1)return;[a[i-1],a[i]]=[a[i],a
 function salirEditor(){S.vista=S.edit?.dest==='asignada'&&S.det?'cliente':null;S.draft=null;render()}
 function colRut(){return S.edit.dest==='plantilla'?'plantillas':S.edit.dest==='asignada'?`clientes/${S.edit.cid}/asignadas`:PRIV()+'/rutinas'}
 async function guardarRutina(){const d=S.draft;if(!d.nombre.trim())return toast('Ponle un nombre a la rutina');if(!d.ejercicios.length)return toast('Agrega al menos un ejercicio');
-  const id=S.edit.id||'r'+uid();const body={nombre:d.nombre.trim(),ejercicios:d.ejercicios.map((e,i)=>({nombre:e.nombre,series:Math.max(1,+e.series||1),reps:+e.reps||0,kg:+e.kg||0,desc:+e.desc||90,...(e.sig&&i<d.ejercicios.length-1?{sig:true}:{})})),orden:d.orden||Date.now()};
+  const id=S.edit.id||'r'+uid();const body={nombre:d.nombre.trim(),ejercicios:d.ejercicios.map((e,i)=>{const m=e.modo||modoDe(e.nombre);return {nombre:e.nombre,series:Math.max(1,+e.series||1),reps:+e.reps||0,kg:+e.kg||0,desc:+e.desc||90,...(m!=='kg'?{modo:m,seg:+e.seg||60,km:+e.km||0,min:+e.min||20}:{}),...(e.sig&&i<d.ejercicios.length-1?{sig:true}:{})}}),orden:d.orden||Date.now()};
   const asg=S.edit.dest==='asignada';if(asg)delete body.orden;
   if(await escribir(()=>S.db.collection(colRut()).doc(id).set(body,{merge:asg}),S.edit.dest==='plantilla'?'Rutina guardada. Ahora tócale «Asignar a clientes».':asg?'Rutina ajustada para '+nombreDe(S.edit.cid):'Rutina guardada'))salirEditor()}
 async function borrarRutina(b){if(!b.dataset.ok){b.dataset.ok=1;b.textContent='Toca otra vez para eliminar';return}
@@ -858,7 +960,8 @@ function progHistorial(){const H=S.hist;let h='';
   const R=[...S.recs].sort((a,b)=>b.fecha-a.fecha);
   h+=`<section class="card"><b>Récords personales</b><div>${R.length?R.map(r=>`<div class="list-row"><div class="row grow">${mini(r.nombre,'mini s44')}<span class="grow">${esc(r.nombre)}</span></div><div style="text-align:right" class="num"><b>${fmt(r.kg)} kg</b><div class="small">× ${r.reps} · 1RM ${fmt(Math.round(e1rm(r.kg,r.reps)))} · ${hace(r.fecha)}</div></div></div>`).join(''):'<div class="small">Tu primer récord aparece al terminar un entrenamiento con peso.</div>'}</div></section>`;
   h+=`<section class="card"><b>Historial</b><div>${H.length?H.slice(0,60).map(x=>`<details class="hrow"><summary><div class="grow"><b>${esc(x.titulo)}</b>${x.prs?.length?' <span class="pill pr">'+x.prs.length+' récord'+(x.prs.length>1?'s':'')+'</span>':''}<div class="small">${new Date(x.fecha).toLocaleDateString('es-CR',{weekday:'short',day:'numeric',month:'short'})} · ${x.min} min · ${x.series} series</div></div><span class="num" style="font-weight:700">${kg(x.volumen)} kg</span></summary>
-     <div class="small" style="padding:0 0 10px;line-height:1.6">${(x.detalle||[]).map(e=>`<b style="color:var(--fg)">${esc(e.nombre)}</b> ${esc(setsTxt(e.sets))}`).join('<br>')}${x.nota?`<div style="color:var(--fg);margin-top:4px">«${esc(x.nota)}»</div>`:''}</div></details>`).join(''):'<div class="small">Aún no hay entrenamientos guardados.</div>'}</div></section>`;
+     <div class="small" style="padding:0 0 10px;line-height:1.6">${(x.detalle||[]).map(e=>`<b style="color:var(--fg)">${esc(e.nombre)}</b> ${esc(setsTxt(e.sets))}`).join('<br>')}${x.nota?`<div style="color:var(--fg);margin-top:4px">«${esc(x.nota)}»</div>`:''}</div>
+     <div class="grid3" style="padding-bottom:12px"><button class="btn sm ghost" onclick="editarEntreno(${J(x.id)})">Editar</button><button class="btn sm ghost" onclick="compartirEntreno(${J(x.id)})">Compartir</button><button class="btn sm danger" onclick="borrarEntreno(${J(x.id)},this)">Borrar</button></div></details>`).join(''):'<div class="small">Aún no hay entrenamientos guardados.</div>'}</div></section>`;
   return h}
 async function guardarMedidas(ev){ev.preventDefault();const d={fecha:Date.now()};let n=0;
   MED.forEach(([k])=>{const v=parseFloat(String($('#m-'+k).value).replace(',','.'));if(!isNaN(v)&&v>0){d[k]=v;n++}});if(!n)return toast('Escribe al menos una medida');
@@ -885,8 +988,8 @@ async function toggleCompartir(b){if(b.disabled)return;b.disabled=true;const on=
 /* ================= Estadísticas ================= */
 /* 1RM estimado (fórmula de Epley). Los calentamientos nunca cuentan. */
 const e1rm=(kg,reps)=>kg>0&&reps>0?(reps===1?kg:kg*(1+Math.min(reps,15)/30)):0;
-const efectivas=sets=>(sets||[]).filter(x=>x.t!=='w');
-const setsTxt=sets=>(sets||[]).map(x=>`${x.t&&x.t!=='n'?TIPOS[x.t].c+' ':''}${fmt(x.kg)}×${x.reps}${x.rpe?' @'+fmt(x.rpe):''}`).join(' · ');
+const efectivas=sets=>(sets||[]).filter(x=>x.t!=='w'&&x.kg!=null);
+const setsTxt=sets=>(sets||[]).map(x=>`${x.t&&x.t!=='n'?TIPOS[x.t].c+' ':''}${serieTxt(x)}${x.rpe?' @'+fmt(x.rpe):''}`).join(' · ');
 /* Sesiones de un ejercicio, de la más vieja a la más nueva */
 function sesionesDe(H,n){const out=[];for(const h of H){const e=(h.detalle||[]).find(x=>x.nombre===n);if(!e)continue;const ef=efectivas(e.sets);if(!ef.length)continue;
   out.push({fecha:h.fecha,sets:e.sets,max:Math.max(...ef.map(x=>x.kg)),rm:Math.round(Math.max(...ef.map(x=>e1rm(x.kg,x.reps)))*10)/10,vol:ef.reduce((a,x)=>a+x.kg*x.reps,0)})}
@@ -1044,7 +1147,7 @@ function cambiarPorAlternativa(i,x){const e=S.ses.ejercicios[i];e.nombre=x;e.sug
 /* Doble progresión: si la vez pasada completaste las reps objetivo en todas las series de trabajo
    con RPE 8 o menos, sube el peso; si no, mantenlo y busca más reps. */
 const progresionActiva=()=>S.esOwner?ls.get('gf-prog',true):S.acceso?.progAuto!==false;
-function sugerencia(nombre,obj){if(!obj)return null;const prev=ultimo(nombre);if(!prev)return null;const ef=prev.filter(x=>x.t!=='w');if(!ef.length)return null;
+function sugerencia(nombre,obj){if(!obj)return null;const prev=ultimo(nombre);if(!prev)return null;const ef=prev.filter(x=>x.t!=='w'&&x.kg!=null);if(!ef.length)return null;
   const top=Math.max(...ef.map(x=>x.kg));if(!top)return null;const S2=ef.filter(x=>x.kg===top),rp=S2.map(x=>x.rpe).filter(Boolean),rpe=rp.length?Math.max(...rp):null;
   const cumplio=S2.every(x=>x.reps>=obj),paso=top>=20?2.5:1;
   if(cumplio&&(rpe==null||rpe<=8))return{kg:top+paso,accion:'sube',txt:`Sube ${fmt(paso)} kg: la vez pasada hiciste ${obj} reps${rpe?' con RPE '+fmt(rpe):''}`};
