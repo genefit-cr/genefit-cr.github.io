@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0E0F12">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://raw.githubusercontent.com https://cdn.jsdelivr.net; connect-src 'self' https://*.googleapis.com https://raw.githubusercontent.com https://cdn.jsdelivr.net https://www.gstatic.com https://fonts.googleapis.com https://fonts.gstatic.com; frame-src https://genefit-1a52a.firebaseapp.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://raw.githubusercontent.com https://cdn.jsdelivr.net; connect-src 'self' https://ntfy.sh https://*.googleapis.com https://raw.githubusercontent.com https://cdn.jsdelivr.net https://www.gstatic.com https://fonts.googleapis.com https://fonts.gstatic.com; frame-src https://genefit-1a52a.firebaseapp.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="referrer" content="no-referrer">
 <title>Genefit</title>
 <link rel="manifest" href="manifest.webmanifest">
@@ -318,6 +318,7 @@ const IC={
   mas:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
   arriba:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>',
   pago:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h3"/></svg>',
+  huella:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6.5 7.5a7 7 0 0 1 11 0"/><path d="M5 12a7 7 0 0 1 14 0v1"/><path d="M8.5 20c-.6-1.6-1-3.8-1-6a4.5 4.5 0 0 1 9 0c0 1 0 2-.2 3"/><path d="M12 13.5c0 2.8.4 5 1.2 7"/><path d="M16.2 19.5c.3-.8.5-1.7.6-2.6"/></svg>',
   dots:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
   cam:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>'
 };
@@ -413,7 +414,7 @@ function init(){
   try{S.db.enablePersistence({synchronizeTabs:true}).catch(()=>{})}catch(e){}
   S.auth.onAuthStateChanged(u=>{
     cortar('comun');cortar('modo');cortar('det');cortar('chat');cortar('retos');cortar('ranking');
-    if(!u){S.me=null;S.listo=true;S.vista=null;render();return}
+    if(!u){S.me=null;S.listo=true;S.vista=null;if(!S.saliendo)render();return}
     S.me=u.uid;S.meName=u.displayName||'';S.listo=false;S.coachId=undefined;render();
     sub('comun',S.db.doc('config/coach'),s=>{
       // Esperar a que el servidor confirme: las reglas solo dejan ver los datos del coach cuando ya está guardado.
@@ -447,9 +448,9 @@ function suscribirCliente(){
 function crearSiFalta(){if(S.perfil!==null||S.acceso===undefined||restringido()||!S.meName||S.creando)return;S.creando=true;
   const base={alias:S.meName.slice(0,40),alta:Date.now(),compartir:false,v:2};
   // Si las reglas publicadas aún no conocen "sexo", se crea sin ese campo (el color queda guardado en el teléfono).
-  S.db.doc(BASE()).set(S.sexoNuevo?{...base,sexo:S.sexoNuevo}:base).catch(e=>{if(S.sexoNuevo&&e?.code==='permission-denied')return S.db.doc(BASE()).set(base);throw e}).then(()=>S.creando=false,e=>{S.creando=false;console.warn(e)})}
+  S.db.doc(BASE()).set(S.sexoNuevo?{...base,sexo:S.sexoNuevo}:base).catch(e=>{if(S.sexoNuevo&&e?.code==='permission-denied')return S.db.doc(BASE()).set(base);throw e}).then(()=>{S.creando=false;avisarRegistro()},e=>{S.creando=false;console.warn(e)})}
 function suscribirCoach(){
-  sub('modo',S.db.collection('clientes'),s=>S.clientes=docs(s));
+  S.clientesIds=null;sub('modo',S.db.collection('clientes'),s=>{const antes=S.clientesIds;S.clientes=docs(s);revisarNuevos(antes)});
   sub('modo',S.db.collection('acceso'),s=>{S.accesos=docs(s);S.sinReglasAcceso=false},()=>{S.accesos=[];S.sinReglasAcceso=true});
   sub('modo',S.db.collection('plantillas'),s=>S.plantillas=docs(s).sort((a,b)=>(a.orden||0)-(b.orden||0)));
   suscribirRetos();
@@ -469,7 +470,7 @@ async function crearPerfil(ev){ev.preventDefault();const alias=$('#alias').value
   if(!S.sexoNuevo)return toast('Elige hombre o mujer');
   const base={alias,alta:Date.now(),compartir:false,v:2};
   const ok=await escribir(()=>S.db.doc(BASE()).set({...base,sexo:S.sexoNuevo}).catch(e=>{if(e?.code==='permission-denied')return S.db.doc(BASE()).set(base);throw e}));
-  if(ok)toast('¡Listo! Bienvenido a Genefit')}
+  if(ok){toast('¡Listo! Bienvenido a Genefit');avisarRegistro()}}
 /* ================= Render ================= */
 let pendiente=false;
 function enfocado(){const a=document.activeElement;return a&&/INPUT|TEXTAREA/.test(a.tagName)&&a.type!=='range'&&a.type!=='file'&&($('#view').contains(a)||$('#sheet').contains(a))}
@@ -481,6 +482,7 @@ function render(){
   if(!S.listo){html='<div class="cargando">Cargando Genefit…</div>';nav=false}
   else if(S.sinConfig){html=vSinConfig();nav=false}
   else if(!S.me){html=vLogin();nav=false;top=false}
+  else if(bloqueadoHuella()){html=vHuella();nav=false;top=false}
   else if(S.sinCoach&&S.modo!=='coach'&&!ls.get('gf-soycliente',false)){html=vConfigCoach();nav=false}
   else if(S.modo==='cliente'&&!S.esOwner&&S.acceso===undefined){html='<div class="cargando">Cargando tu plan…</div>';nav=false}
   else if(S.modo==='cliente'&&restringido()){html=vBloqueado();nav=false}
@@ -515,11 +517,12 @@ function vSinConfig(){return `<div class="stack" style="padding-top:40px"><h1>Fa
 /* Al salir se borra todo lo guardado en este teléfono (copia de la base de datos y entreno en curso),
    para que la siguiente persona que use el aparato no vea nada del anterior. */
 async function salir(){if(S.ses&&!confirmSalir){confirmSalir=true;return toast('Tienes un entreno en curso. Si sales se descarta. Toca «Salir» otra vez para salir igual.')}confirmSalir=false;
-  $('#view').innerHTML='<div class="cargando">Cerrando sesión…</div>';$('#nav').hidden=true;
+  S.saliendo=true;$('#view').innerHTML='<div class="cargando">Cerrando sesión…</div>';$('#nav').hidden=true;
   cortar('comun');cortar('modo');cortar('det');cortar('chat');cortar('retos');cortar('ranking');
   try{await S.auth.signOut()}catch(e){}
   try{await S.db.terminate();await S.db.clearPersistence()}catch(e){console.warn(e)}
-  ['hierro2-sesion','gf-visto','gf-modo','gf-soycliente','gf-tema'].forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
+  ['hierro2-sesion','gf-visto','gf-modo','gf-soycliente','gf-tema','gf-huella'].forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
+  try{sessionStorage.removeItem('gf-desbloq')}catch(e){}
   location.reload()}
 let confirmSalir=false;
 function vLogin(){const r=S.authModo==='crear',o=S.authModo==='olvido';
@@ -570,7 +573,7 @@ function vHoy(){
   const hoy=new Date(),L=lunes(Date.now()),hechos=new Set(S.hist.map(h=>new Date(h.fecha).toDateString()));
   const nom=S.perfil?.alias||S.meName||'';
   let h=`<div class="stack" style="padding-top:12px"><div><span class="small">${esc(hoy.toLocaleDateString('es-CR',{weekday:'long',day:'numeric',month:'long'}))}</span><h1>Hola${nom?', '+esc(nom.split(' ')[0]):''}</h1></div>`;
-  h+=tarjetaSexo()+bannerInstalar();
+  h+=tarjetaSexo()+tarjetaHuella()+bannerInstalar();
   {const pa=pago(S.acceso);if(['pronto','venc'].includes(pa.k)||S.comp?.[0]?.estado==='pendiente')h+=tarjetaSinpe()}
   h+=`<div class="semana" aria-label="Esta semana">${LETRAS.map((l,i)=>{const t=new Date(L+i*DIA);const c=hechos.has(t.toDateString())?'hecho':(i===hoyDow()?'hoy':'');return `<div class="dia ${c}"><span class="tiny">${l}</span><b>${t.getDate()}</b></div>`}).join('')}</div>`;
   if(S.ses){const all=S.ses.ejercicios.flatMap(e=>e.sets);h+=`<div class="card line" style="border-color:var(--ok-line);background:var(--ok-bg)"><span class="eyebrow ac">En curso</span><h2>${esc(S.ses.rutina)}</h2><span class="small" style="color:var(--ok-fg)">${all.filter(x=>x.ok).length} de ${all.length} series · empezaste ${hace(S.ses.inicio)}</span><button class="btn primary go" onclick="abrirSesion()">${IC.play} Continuar</button></div>`}
@@ -805,6 +808,7 @@ function vProgreso(){const t=S.progTab||'resumen';
 function progCuerpo(){
   const M=S.med,ult=M.at(-1),peso=[...M].reverse().find(m=>m.peso!=null)?.peso,H=S.hist;
   let h=`<div class="grid3"><div class="tile"><span class="tiny">Peso</span><span class="big">${peso!=null?fmt(peso):'—'}</span><span class="tiny">kg</span></div><div class="tile"><span class="tiny">Medidas</span><span class="big">${M.length}</span><span class="tiny">registros</span></div><div class="tile"><span class="tiny">Fotos</span><span class="big">${S.fotos.length}</span></div></div>`;
+  h+=ajusteHuella();
   if(S.perfil?.sexo)h+=`<section class="card"><b>Color de la app</b>${sexoChips(S.perfil.sexo,'elegirSexo')}</section>`;
   h+=`<section class="card"><div class="row between"><b>Compartir mi progreso con mi coach</b><button class="switch" role="switch" aria-checked="${!!S.perfil?.compartir}" aria-label="Compartir medidas y fotos con mi coach" onclick="toggleCompartir(this)"><i></i></button></div>
    <span class="small">${S.perfil?.compartir?'Tu coach ve tus medidas y fotos de progreso.':'Tus medidas y fotos son solo tuyas. Tu coach ve tus entrenamientos y récords.'}</span></section>`;
@@ -1065,6 +1069,70 @@ async function borrarReto(id,b){if(!b.dataset.ok){b.dataset.ok=1;b.style.color='
 function suscribirRetos(){sub('modo',S.db.collection('retos'),s=>{S.retos=docs(s);cortar('retos');S.retoYo={};
   if(S.modo==='cliente')for(const r of S.retos.filter(x=>x.hasta>=Date.now()-3*DIA))sub('retos',S.db.doc(`retos/${r.id}/participantes/${S.me}`),d=>{S.retoYo={...S.retoYo,[r.id]:d.exists}})})}
 
+/* ================= Aviso al coach cuando se registra un cliente ================= */
+/* Dentro de Genefit: aviso y notificación del teléfono (con la app abierta o minimizada).
+   Con la app cerrada: la app gratis "ntfy" recibe un aviso sin datos personales. */
+function revisarNuevos(antes){const yo=S.me,lim=Date.now()-15*60000;
+  if(antes)for(const c of S.clientes)if(!antes.has(c.id)&&c.id!==yo&&(c.alta||0)>lim)avisarNuevo(c);
+  S.clientesIds=new Set(S.clientes.map(c=>c.id));if(ls.get('gf-visto-alta',null)==null)ls.set('gf-visto-alta',Date.now())}
+async function avisarNuevo(c){const n=nombreCliente(c);toast(`Nuevo cliente: ${n}`);try{navigator.vibrate?.([120,60,120])}catch(e){}
+  if('Notification' in window&&Notification.permission==='granted'){try{const r=await navigator.serviceWorker?.getRegistration();const o={body:`${n} acaba de crear su cuenta en Genefit.`,icon:'icons/icon-192.png',badge:'icons/favicon-32.png',tag:'nuevo-'+c.id};if(r)await r.showNotification('Nuevo cliente',o);else new Notification('Nuevo cliente',o)}catch(e){}}}
+const nuevosDesde=()=>{const v=ls.get('gf-visto-alta',Date.now());return S.clientes.filter(c=>c.id!==S.me&&(c.alta||0)>v).sort((a,b)=>b.alta-a.alta)};
+function tarjetaNuevos(){const N=nuevosDesde();if(!N.length)return'';
+  return `<section class="card line" style="border-color:var(--accent);background:var(--ok-bg)"><div class="row between"><b>${N.length===1?'1 cliente nuevo':N.length+' clientes nuevos'}</b><button class="btn sm ghost" onclick="ls.set('gf-visto-alta',Date.now());render()">Listo</button></div>
+   <span class="small" style="color:var(--ok-fg)">${N.slice(0,6).map(c=>`${esc(nombreCliente(c))} (${hace(c.alta)})`).join(' · ')}</span></section>`}
+function cardAvisosCoach(){const c=S.coachCfg||{},perm='Notification' in window?Notification.permission:'no';
+  const abierto=S.avisosAbierto??!(c.ntfy||perm==='granted');
+  return `<details class="card" ${abierto?'open':''} ontoggle="S.avisosAbierto=this.open"><summary style="font-weight:700;cursor:pointer">Avisos de clientes nuevos ${c.ntfy?'<span class="pill ok" style="margin-left:6px">ntfy activo</span>':''}</summary>
+   <div class="stack" style="margin-top:12px">
+   <div><b>En este teléfono</b><div class="small">${perm==='granted'?'Activado: te avisamos cuando tienes Genefit abierta o minimizada.':perm==='denied'?'Bloqueaste las notificaciones de Genefit. Actívalas en los ajustes del navegador.':perm==='no'?'Este navegador no permite notificaciones.':'Te avisamos cuando tienes Genefit abierta o minimizada.'}</div>
+    ${perm==='default'?`<button class="btn sm primary" style="margin-top:8px" onclick="pedirNotif()">Activar notificaciones</button>`:''}</div>
+   <div><b>Con Genefit cerrada (gratis, con ntfy)</b>
+    ${c.ntfy?`<div class="small">1. Instala la app <b>ntfy</b> (<a href="https://play.google.com/store/apps/details?id=io.heckel.ntfy" target="_blank" rel="noopener" style="color:var(--accent)">Android</a> · <a href="https://apps.apple.com/app/ntfy/id1625396347" target="_blank" rel="noopener" style="color:var(--accent)">iPhone</a>).<br>2. Toca <b>+</b> y suscríbete a este tema:</div>
+      <button class="tile" style="border:0;text-align:left;color:var(--fg);background:var(--raise);margin:8px 0" onclick="copiar(${J(c.ntfy)},'Tema copiado')"><span class="tiny">Tema · toca para copiar</span><b class="num" style="word-break:break-all">${esc(c.ntfy)}</b></button>
+      <div class="small">3. Listo: cuando alguien se registre te llega «Se registró un cliente nuevo», sin nombres ni datos.</div>
+      <div class="grid2" style="margin-top:8px"><button class="btn sm ghost" onclick="probarNtfy()">Enviar prueba</button><button class="btn sm danger" onclick="ntfyActivar(false)">Desactivar</button></div>`
+     :`<div class="small">Instala la app gratis ntfy y te llega una notificación aunque Genefit esté cerrada.</div><button class="btn sm primary" style="margin-top:8px" onclick="ntfyActivar(true)">Activar</button>`}</div></div></details>`}
+async function pedirNotif(){try{await Notification.requestPermission()}catch(e){}render()}
+async function ntfyActivar(on){S.avisosAbierto=true;const tema=on?'genefit-'+[...crypto.getRandomValues(new Uint8Array(12))].map(b=>b.toString(36).padStart(2,'0')).join('').slice(0,20):firebase.firestore.FieldValue.delete();
+  await escribir(()=>S.db.doc('config/coach').set({ntfy:tema},{merge:true}),on?'Listo. Ahora suscríbete al tema en la app ntfy.':'Avisos de ntfy desactivados')}
+function enviarNtfy(tema,mensaje){if(!tema)return;try{fetch('https://ntfy.sh/',{method:'POST',mode:'no-cors',body:JSON.stringify({topic:tema,title:'Genefit',message:mensaje,tags:['tada'],click:APP_URL})}).catch(()=>{})}catch(e){}}
+function probarNtfy(){enviarNtfy(S.coachCfg?.ntfy,'Prueba: así te van a llegar los avisos de clientes nuevos.');toast('Prueba enviada. Revisa la app ntfy.')}
+function avisarRegistro(){if(!S.esOwner)enviarNtfy(S.coachCfg?.ntfy,'Se registró un cliente nuevo. Ábrelo en Genefit para verlo.')}
+
+/* ================= Entrar con huella o cara (WebAuthn) ================= */
+/* La huella nunca sale del teléfono: el sistema solo confirma que es la misma persona.
+   Sirve para abrir Genefit sin escribir la clave; la cuenta sigue siendo de correo y clave. */
+const b64u={de:b=>btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''),a:s=>Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0))};
+let HUELLA_OK=null;
+async function huellaDisponible(){if(HUELLA_OK!==null)return HUELLA_OK;try{HUELLA_OK=!!window.PublicKeyCredential&&await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()}catch(e){HUELLA_OK=false}return HUELLA_OK}
+huellaDisponible().then(()=>programar());
+const huella=()=>{const h=ls.get('gf-huella',null);return h&&h.uid===S.me?h:null};
+const desbloqueado=()=>{try{return sessionStorage.getItem('gf-desbloq')===S.me}catch(e){return true}};
+const bloqueadoHuella=()=>!!S.me&&!!huella()&&!desbloqueado();
+async function activarHuella(){
+  try{const u=S.auth.currentUser,cred=await navigator.credentials.create({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),rp:{name:'Genefit',id:location.hostname},
+      user:{id:new TextEncoder().encode(S.me),name:u?.email||S.meName||'Genefit',displayName:S.meName||u?.email||'Genefit'},
+      pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required',residentKey:'preferred'},timeout:60000}});
+    ls.set('gf-huella',{uid:S.me,id:b64u.de(cred.rawId)});try{sessionStorage.setItem('gf-desbloq',S.me)}catch(e){}toast('Listo. La próxima vez entras con tu huella.');render()}
+  catch(e){console.warn(e);toast(e?.name==='NotAllowedError'?'Se canceló. Puedes activarla cuando quieras.':'Este teléfono no pudo activar la huella.')}}
+function quitarHuella(){try{localStorage.removeItem('gf-huella')}catch(e){}toast('Ya no se pide la huella al entrar');render()}
+async function entrarHuella(){const h=huella();if(!h)return;
+  try{await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),rpId:location.hostname,allowCredentials:[{type:'public-key',id:b64u.a(h.id),transports:['internal']}],userVerification:'required',timeout:60000}});
+    try{sessionStorage.setItem('gf-desbloq',S.me)}catch(e){}render()}
+  catch(e){console.warn(e);toast('No se pudo confirmar. Intenta otra vez o usa tu clave.')}}
+function vHuella(){const n=(S.meName||'').split(' ')[0];
+  return `<div class="stack auth" style="padding-top:64px;text-align:center;align-items:center">
+   <span class="marca"><i><svg viewBox="0 0 24 24" fill="none" stroke="#0E0F12" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6v12M18 6v12M3 9v6M21 9v6M6 12h12"/></svg></i>GENEFIT</span>
+   <h1 style="font-size:40px;line-height:1">Hola${n?', '+esc(n):''}</h1><p class="small" style="font-size:16px">Confirma que eres tú para entrar.</p>
+   <button class="btn primary go block" onclick="entrarHuella()">${IC.huella} Entrar con huella o cara</button>
+   <button class="link" onclick="quitarHuella();salir()">Usar mi correo y clave</button></div>`}
+function tarjetaHuella(){if(!HUELLA_OK||huella()||ls.get('gf-huella-no',false))return'';
+  return `<section class="card line" style="flex-direction:row;align-items:center;gap:12px"><span style="color:var(--accent);flex:none;display:flex">${IC.huella}</span><div class="grow"><b>Entra con tu huella</b><div class="small">Sin escribir la clave. Tu huella no sale del teléfono.</div></div>
+   <button class="btn sm primary" onclick="activarHuella()">Activar</button><button class="iconbtn" onclick="ls.set('gf-huella-no',true);render()" aria-label="No mostrar más">${IC.x}</button></section>`}
+function ajusteHuella(){if(!HUELLA_OK)return'';const on=!!huella();
+  return `<section class="card"><div class="row between"><b>Entrar con huella o cara</b><button class="switch" role="switch" aria-checked="${on}" aria-label="Entrar con huella" onclick="${on?'quitarHuella()':'activarHuella()'}"><i></i></button></div><span class="small">${on?'Al abrir Genefit te pedimos la huella o la cara.':'Al abrir Genefit te pedimos la clave solo si cerraste sesión.'} Tu huella nunca sale del teléfono.</span></section>`}
+
 /* ================= Chat (cliente y coach) ================= */
 function marcarVisto(cid){const v=ls.get('gf-visto',{});v[cid]=Date.now();ls.set('gf-visto',v)}
 function hiloHTML(lista){return lista.length?`<div class="msgs" id="msgs">${lista.map(m=>`<div class="msg ${m.de===S.me?'yo':'otro'}">${esc(m.texto)}<small>${hace(m.fecha)}</small></div>`).join('')}</div>`:'<div class="empty">Todavía no hay mensajes. Escribe el primero.</div>'}
@@ -1105,7 +1173,7 @@ function vClientes(){const C=S.clientes;pedirNombres(C.map(c=>c.id));
   const activos=C.filter(c=>c.ultimo&&dias(c.ultimo)<=2).length,nAt=C.filter(atencion).length,nPr=C.filter(progresa).length;
   const F={todos:[()=>true,'Todos',C.length],atencion:[atencion,'Necesitan atención',nAt],progresan:[progresa,'Progresan',nPr]};
   const f=F[S.filtro]||F.todos;let lista=[...C].filter(f[0]).sort((a,b)=>(b.ultimo||0)-(a.ultimo||0));
-  let h=`<div class="stack" style="padding-top:12px"><div><span class="small">Panel del entrenador</span><h1>Mis clientes</h1></div>${bannerInstalar()}
+  let h=`<div class="stack" style="padding-top:12px"><div><span class="small">Panel del entrenador</span><h1>Mis clientes</h1></div>${tarjetaNuevos()}${tarjetaHuella()}${bannerInstalar()}
    <section class="card line" style="background:var(--ok-bg);border-color:var(--ok-line)"><b>Invita a tus clientes</b>
     <span class="small" style="color:var(--ok-fg)">Mándales el enlace de Genefit. Entran, tocan «Soy nuevo», crean su cuenta con correo y clave, y aparecen aquí.</span>
     <div class="row" style="flex-wrap:wrap;gap:8px"><button class="btn primary sm" onclick="compartirLink()">Compartir enlace</button><button class="btn ghost sm" onclick="copiarLink()">Copiar enlace</button></div></section>
@@ -1113,7 +1181,7 @@ function vClientes(){const C=S.clientes;pedirNombres(C.map(c=>c.id));
    <div class="chips" role="group" aria-label="Filtro de clientes">${Object.entries(F).map(([k,[,l,n]])=>`<button class="chip" aria-pressed="${(S.filtro||'todos')===k}" onclick="S.filtro='${k}';render()">${l} · ${n}</button>`).join('')}</div>`;
   h+=lista.length?`<div class="stack s8">${lista.map(c=>{const [t,k]=estado(c),n=nombreCliente(c);return `<button class="card" style="padding:12px;border:0;text-align:left;color:var(--fg);flex-direction:row;align-items:center" onclick="abrirCliente(${J(c.id)})">${avatar(n)}<span class="grow" style="min-width:0"><b style="display:block">${esc(n)}${c.id===S.me?' (tú)':''}</b><span class="small" style="display:block">${esc(detalleLinea(c))}</span>${lineaTend(c)}</span><span class="pills"><span class="pill ${k}">${t}</span>${estancado(c)?'<span class="pill alerta">Estancado</span>':''}${conDolor(c)?'<span class="pill mal">Dolor</span>':''}${c.compPend?'<span class="pill ok">Comprobante</span>':''}${pillPago(c.id)}</span></button>`}).join('')}</div>`
     :`<div class="empty">${C.length?(S.filtro==='progresan'?'Nadie tiene récords en los últimos 30 días todavía.':'Nadie necesita atención. ¡Todos van al día!'):'Aún no tienes clientes. Cuando un cliente abra Genefit por primera vez, aparece aquí.'}</div>`;
-  h+=cardRetosCoach();
+  h+=cardRetosCoach()+cardAvisosCoach()+ajusteHuella();
   return h+`</div>${S.plantillas.length&&C.length?`<button class="btn primary fab" onclick="elegirPlantilla()">${IC.mas} Asignar rutina</button>`:''}`}
 function compartirLink(){if(navigator.share)navigator.share({title:'Genefit',text:'Entra a Genefit para ver tu rutina:',url:APP_URL}).catch(()=>{});else copiarLink()}
 function copiarLink(){const ok=()=>toast('Enlace copiado');try{navigator.clipboard.writeText(APP_URL).then(ok,()=>toast(APP_URL))}catch(e){toast(APP_URL)}}

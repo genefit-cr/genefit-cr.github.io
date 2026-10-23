@@ -9,6 +9,7 @@ mkdirSync(OUT, { recursive: true });
 
 const b = await chromium.launch({ executablePath: CHROMIUM, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const problemas = [];
+const ntfy = [];
 let paso = 0;
 async function nueva(nombre) {
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, userAgent: process.env.IPHONE ? 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1' : undefined, serviceWorkers: 'block' });
@@ -16,9 +17,11 @@ async function nueva(nombre) {
     const u = r.request().url();
     if (u.startsWith('https://www.gstatic.com/firebasejs/')) return r.fulfill({ path: NM + u.split('/').pop(), contentType: 'text/javascript' });
     if (u.startsWith('http://localhost:8766/')) return r.continue();
+    if (u.startsWith('https://ntfy.sh/')) { ntfy.push(r.request().postData() || ''); return r.fulfill({ status: 200, body: '{}' }); }
     return r.abort(); // fuentes y fotos externas: no hacen falta para la prueba
   });
   const p = await ctx.newPage();
+  if (nombre === 'cliente') { const cdp = await ctx.newCDPSession(p); await cdp.send('WebAuthn.enable'); await cdp.send('WebAuthn.addVirtualAuthenticator', { options: { protocol: 'ctap2', transport: 'internal', hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } }); }
   p.on('pageerror', e => problemas.push(`[${nombre}] error JS: ${e.message}`));
   p.on('console', m => { const t = m.text(); if (/Content Security Policy|Refused to/.test(t)) problemas.push(`[${nombre}] CSP: ${t.slice(0, 200)}`); });
   await p.goto('http://localhost:8766/');
@@ -48,9 +51,36 @@ try {
   await C.getByText('Agregar Empuje, Tirón y Pierna de ejemplo').click();
   await ver(C, 'Pierna completa');
 
+  // Avisos de clientes nuevos con ntfy
+  await C.evaluate(() => irA('clientes'));
+  await C.locator('details.card', { hasText: 'Avisos de clientes nuevos' }).getByRole('button', { name: 'Activar', exact: true }).click();
+  await ver(C, 'suscríbete al tema');
+  await C.locator('details.card', { hasText: 'Avisos de clientes nuevos' }).scrollIntoViewIfNeeded();
+  await foto(C, 'avisos-ntfy');
+  await C.getByRole('button', { name: 'Enviar prueba' }).click();
+  await C.waitForTimeout(500);
+  if (!ntfy.some(b => /Prueba/.test(b))) problemas.push('No se envió la prueba a ntfy');
+
   // 2. Cliente
   const K = await nueva('cliente');
   await crearCuenta(K, 'Ana Pérez', 'ana@genefit.test', 'Mujer');
+  await ver(K, 'Hola, Ana');
+  await ver(C, 'Nuevo cliente: Ana Pérez');
+  await K.waitForTimeout(500);
+  const aviso = ntfy.find(b => /cliente nuevo/.test(b));
+  if (!aviso) problemas.push('No llegó el aviso de cliente nuevo a ntfy');
+  else if (/Ana/.test(aviso)) problemas.push('El aviso de ntfy no debe llevar el nombre');
+  // Entrar con huella
+  await K.evaluate(() => scrollTo(0, 0));
+  await foto(K, 'oferta-huella');
+  await foto(C, 'aviso-nuevo');
+  await K.getByRole('button', { name: 'Activar' }).click();
+  await ver(K, 'La próxima vez entras con tu huella');
+  await K.evaluate(() => sessionStorage.removeItem('gf-desbloq'));
+  await K.reload();
+  await ver(K, 'Confirma que eres tú');
+  await foto(K, 'huella');
+  await K.getByRole('button', { name: /Entrar con huella/ }).click();
   await ver(K, 'Hola, Ana');
   const temaAna = await K.evaluate(() => document.body.className);
   if (!/tema-f/.test(temaAna)) problemas.push('Ana (mujer) no quedó en rosa: ' + temaAna);
