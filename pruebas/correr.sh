@@ -7,7 +7,7 @@ cd "$AQUI"
 [ -d node_modules ] || npm install --no-audit --no-fund
 # Copia de la app conectada a los emuladores
 SITIO="$(mktemp -d)"
-cp -r "$RAIZ"/{index.html,icons,manifest.webmanifest,sw.js} "$SITIO"/
+cp -r "$RAIZ"/{index.html,icons,manifest.webmanifest,sw.js,anim3d.js,vendor} "$SITIO"/
 python3 - "$SITIO/index.html" <<'PY'
 import sys; p = sys.argv[1]; s = open(p, encoding='utf-8').read()
 a = "S.auth=firebase.auth();S.db=firebase.firestore();"

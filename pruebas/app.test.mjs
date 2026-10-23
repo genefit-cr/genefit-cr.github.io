@@ -7,7 +7,7 @@ const CHROMIUM = process.env.CHROMIUM || undefined;
 const OUT = process.argv[2] || new URL('./capturas', import.meta.url).pathname;
 mkdirSync(OUT, { recursive: true });
 
-const b = await chromium.launch({ executablePath: CHROMIUM });
+const b = await chromium.launch({ executablePath: CHROMIUM, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const problemas = [];
 let paso = 0;
 async function nueva(nombre) {
@@ -69,6 +69,17 @@ try {
   await ver(K, 'Empuje');
   await K.getByRole('button', { name: 'Empezar' }).first().click();
   await ver(K, 'Agregar serie');
+  // Animación 3D en la ficha del ejercicio
+  await K.evaluate(() => abrirFicha(S.ses.ejercicios[0].nombre));
+  await K.waitForSelector('#v3d.listo canvas', { timeout: 20000 });
+  await K.waitForTimeout(800);
+  await foto(K, 'ficha-3d');
+  await K.getByRole('button', { name: 'Pausar animación' }).click();
+  await K.getByRole('button', { name: 'Fotos' }).click();
+  if (await K.locator('#v3d').count()) problemas.push('No cambió a fotos');
+  await K.getByRole('button', { name: '3D' }).click();
+  await K.waitForSelector('#v3d.listo canvas', { timeout: 20000 });
+  await K.evaluate(() => cerrarFicha());
   // Etapa 2: tipo de serie, RPE, superserie
   await K.evaluate(() => menuSerie(0, 0));
   await K.getByRole('radio', { name: 'Calentamiento' }).click();
