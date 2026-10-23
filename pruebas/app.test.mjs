@@ -347,6 +347,13 @@ try {
   if (resto.ses) problemas.push('Quedó el entreno en curso guardado tras salir');
   if (resto.dbs.some(n => /firestore/.test(n) && /main/.test(n))) problemas.push('Quedó la copia de Firestore tras salir: ' + resto.dbs.join(','));
   await foto(K, 'tras-salir');
+  // Olvidé mi clave: correo enviado, aviso de spam y WhatsApp de Génesis
+  await K.getByRole('button', { name: 'Olvidé mi clave' }).click();
+  await K.fill('#amail', 'ana@genefit.test'); await K.click('#abtn');
+  await ver(K, 'Revisa tu correo'); await ver(K, 'spam');
+  const wa = await K.getByRole('link', { name: /WhatsApp/ }).getAttribute('href');
+  if (!/^https:\/\/wa\.me\/50660252568\?text=.*ana%40genefit\.test/.test(wa)) problemas.push('Enlace de WhatsApp mal: ' + wa);
+  await foto(K, 'olvido-clave');
   console.log('Flujo completo OK');
 } catch (e) {
   for (const pg of b.contexts().flatMap(c => c.pages())) await pg.screenshot({ path: OUT + '/fallo-' + Math.random().toString(36).slice(2, 6) + '.png' }).catch(() => {});
