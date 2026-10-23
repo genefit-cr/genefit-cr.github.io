@@ -28,7 +28,7 @@ async function nueva(nombre) {
   return p;
 }
 const ver = async (p, texto, ms = 15000) => { try { await p.getByText(texto, { exact: false }).first().waitFor({ timeout: ms }); } catch (e) { await p.screenshot({ path: OUT + "/fallo.png" }); throw new Error("No apareció: " + texto + " | pantalla: " + (await p.innerText("body")).slice(0, 300).replace(/\n/g, " / ")); } };
-async function foto(p, n) { await p.screenshot({ path: `${OUT}/e2e-${String(++paso).padStart(2, '0')}-${n}.png`, fullPage: true }); }
+async function foto(p, n) { await p.screenshot({ path: `${OUT}/e2e-${String(++paso).padStart(2, '0')}-${n}.png`, fullPage: !/usar-sesion|ajustar/.test(n) }); }
 async function crearCuenta(p, nombre, mail, sexo) {
   await p.getByText('Soy nuevo: crear cuenta').click();
   await p.fill('#anom', nombre); await p.fill('#amail', mail);
@@ -332,13 +332,17 @@ try {
   await ver(C, 'Pago confirmado: 12 sesiones activas');
   await ver(K, 'de 12 te quedan');
   await K.getByRole('button', { name: 'Usé una sesión' }).click();
-  await K.fill('#us-t', '2026-10-20T18:30'); await K.fill('#us-n', 'Pierna');
+  await K.fill('#us-r', ''); await K.getByRole('button', { name: 'Descontar 1 sesión' }).click(); await ver(K, 'Escribe qué rutina hiciste');
+  const chips = await K.evaluate(() => rutinasParaSesion());
+  if (!chips.length) problemas.push('No salieron rutinas para elegir al usar una sesión');
+  await K.fill('#us-t', '2026-10-20T18:30'); await K.fill('#us-r', 'Pierna y glúteo'); await K.fill('#us-n', 'Pierna');
+  await foto(K, 'usar-sesion');
   await K.getByRole('button', { name: 'Descontar 1 sesión' }).click();
   await K.waitForFunction(() => sesDe(S.perfil, S.acceso).rest === 11, null, { timeout: 15000 });
   await K.locator('details', { hasText: 'Mis compras' }).locator('summary').click();
   await ver(K, 'Pago confirmado por Génesis ✓');
   await K.locator('details', { hasText: 'Ver mis sesiones' }).locator('summary').click();
-  await ver(K, 'Pierna');
+  await ver(K, 'Rutina: Pierna y glúteo');
   await foto(K, 'sesiones-cliente');
   // El cliente no puede activarse sesiones solo
   const truco = await K.evaluate(() => S.db.doc('acceso/' + S.me).set({ sesAprob: { x: { c: 99, t: 1 } } }, { merge: true }).then(() => 'pasó', e => e.code));
@@ -346,7 +350,7 @@ try {
   await ver(C, 'de 12 restantes');
   if (await C.getByRole('button', { name: /Usé una sesión|Registrar sesión/ }).count()) problemas.push('El coach no debía poder registrar sesiones');
   await C.locator('details', { hasText: 'Sesiones usadas' }).locator('summary').click();
-  await ver(C, 'Pierna');
+  await ver(C, 'Rutina: Pierna y glúteo');
   await C.locator('details', { hasText: 'Compras (' }).locator('summary').click();
   await ver(C, 'SINPE Móvil');
   await foto(C, 'sesiones-coach');

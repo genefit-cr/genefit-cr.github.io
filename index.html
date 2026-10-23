@@ -1266,7 +1266,7 @@ function estadoSes(c){const s=sesCli(c);if(s.pend)return{k:'pend',t:'Por confirm
   if(s.rest<=2)return{k:'pronto',t:`Quedan ${s.rest}`,cls:'alerta'};return{k:'ok',t:`${s.rest} sesiones`,cls:'ok'}}
 const pillSes=c=>c.id===S.me?'':(p=>`<span class="pill ${p.cls}">${p.t}</span>`)(estadoSes(c));
 const estadoCompra=p=>p.estado==='ok'?`Pago confirmado por ${ENTRENA.corto} ✓`:p.estado==='no'?`${ENTRENA.corto} no recibió el pago`:`Pago por confirmar por ${ENTRENA.corto}`;
-const listaSesiones=(s,borrar)=>s.log.map((x,k)=>`<div class="list-row"><span class="grow"><b class="num">#${s.us-k}</b> · ${fechaHora(x.t)}${x.n?`<span class="small" style="display:block">${esc(x.n)}</span>`:''}${x.g?'<span class="small" style="display:block">Anotada por '+ENTRENA.corto+'</span>':''}</span>${borrar&&!x.g?`<button class="iconbtn" onclick="borrarMiSesion(${J(x.id)},this)" aria-label="Borrar la sesión del ${fechaHora(x.t)}">${IC.x}</button>`:''}</div>`).join('');
+const listaSesiones=(s,borrar)=>s.log.map((x,k)=>`<div class="list-row"><span class="grow"><b class="num">#${s.us-k}</b> · ${fechaHora(x.t)}${x.r?`<span style="display:block;font-weight:600">Rutina: ${esc(x.r)}</span>`:''}${x.n?`<span class="small" style="display:block">${esc(x.n)}</span>`:''}${x.g?'<span class="small" style="display:block">Anotada por '+ENTRENA.corto+'</span>':''}</span>${borrar&&!x.g?`<button class="iconbtn" onclick="borrarMiSesion(${J(x.id)},this)" aria-label="Borrar la sesión del ${fechaHora(x.t)}">${IC.x}</button>`:''}</div>`).join('');
 const listaCompras=(s,cid)=>s.paq.map(x=>`<div class="list-row" style="align-items:flex-start"><span class="grow"><b>${x.c} sesiones</b><span class="small" style="display:block;color:${x.estado==='ok'?'var(--ok-fg)':x.estado==='no'?'var(--danger)':'var(--gold)'}">${estadoCompra(x)}</span>${x.estado==='ok'&&x.pidio&&x.pidio!==x.c?`<span class="small" style="display:block">Ajustada por ${ENTRENA.corto} (se pidieron ${x.pidio})</span>`:''}<span class="small" style="display:block">${esc(METODOS[x.m]||x.m||'')}${x.ref?' · ref. '+esc(x.ref):''}</span></span><span style="text-align:right"><span class="small">${fecha(x.t)}</span>${cid&&x.comp?`<button class="btn sm ghost" style="display:block;margin-top:4px" onclick="verComprobante(${J(cid)},${J(x.comp)})">Comprobante</button>`:''}</span></div>`).join('');
 function escribirSes(cambio,msg){const x=S.perfil?.ses||{};const n=cambio({compradas:0,log:[...(x.log||[])],paq:[...(x.paq||[])]});return escribir(()=>S.db.doc(BASE()).update({ses:n}),msg)}
 /* Cliente */
@@ -1285,11 +1285,21 @@ function abrirUsar(){const s=sesDe(S.perfil,S.acceso);if(s.rest<=0)return toast(
   abrirHoja(`<div class="row between"><h2>Usé una sesión</h2><button class="iconbtn" onclick="cerrarHoja()" aria-label="Cerrar">${IC.x}</button></div>
    <div class="body"><span class="small">Te quedan ${s.rest}. Después de esta te quedarán ${s.rest-1}.</span>
    <div class="field"><label class="lbl" for="us-t">Fecha y hora</label><input class="input" id="us-t" type="datetime-local" value="${iso}"></div>
-   <div class="field"><label class="lbl" for="us-n">Nota (opcional)</label><input class="input" id="us-n" maxlength="80" placeholder="Ej: pierna, evaluación"></div>
+   <div class="field"><label class="lbl" for="us-r">Rutina que hiciste</label><input class="input" id="us-r" maxlength="60" placeholder="Ej: Pierna y glúteo" value="${esc(rutinaSugerida())}">
+    ${(o=>o.length?`<div class="chips">${o.map(r=>`<button class="chip" type="button" onclick="$('#us-r').value=${J(r)}">${esc(r)}</button>`).join('')}</div>`:'')(rutinasParaSesion())}</div>
+   <div class="field"><label class="lbl" for="us-n">Nota (opcional)</label><input class="input" id="us-n" maxlength="80" placeholder="Ej: evaluación, subí peso"></div>
    <button class="btn primary go" onclick="usarSesion()">Descontar 1 sesión</button></div>`)}
-async function usarSesion(){const v=$('#us-t')?.value;if(!v)return toast('Elige la fecha y hora');const t=new Date(v).getTime(),n=($('#us-n')?.value||'').trim().slice(0,80);
+// Rutinas para elegir al usar una sesión: lo entrenado hoy, las asignadas por el coach y las propias
+function rutinasParaSesion(){const hoy=new Date().toDateString(),v=new Set();
+  for(const h of S.hist||[])if(new Date(h.fecha).toDateString()===hoy&&h.titulo)v.add(h.titulo);
+  for(const a of S.asig||[])if(a.nombre)v.add(a.nombre);for(const r of S.rut||[])if(r.nombre)v.add(r.nombre);
+  return [...v].map(x=>String(x).slice(0,60)).slice(0,8)}
+function rutinaSugerida(){const hoy=new Date().toDateString(),h=(S.hist||[]).find(h=>new Date(h.fecha).toDateString()===hoy&&h.titulo);
+  return String(h?.titulo||rutinaDeHoy()?.nombre||'').slice(0,60)}
+async function usarSesion(){const v=$('#us-t')?.value;if(!v)return toast('Elige la fecha y hora');const t=new Date(v).getTime(),n=($('#us-n')?.value||'').trim().slice(0,80),r=($('#us-r')?.value||'').trim().slice(0,60);
+  if(!r){$('#us-r')?.focus();return toast('Escribe qué rutina hiciste')}
   const s=sesDe(S.perfil,S.acceso);if(s.rest<=0)return toast('No te quedan sesiones.');
-  if(await escribirSes(x=>({...x,log:[...x.log,{id:uid(),t,...(n?{n}:{})}]}),`Listo. Te quedan ${s.rest-1}.`))cerrarHoja()}
+  if(await escribirSes(x=>({...x,log:[...x.log,{id:uid(),t,r,...(n?{n}:{})}]}),`Listo. Te quedan ${s.rest-1}.`))cerrarHoja()}
 async function borrarMiSesion(id,b){if(!b.dataset.ok){b.dataset.ok=1;b.style.color='var(--danger)';toast('Toca otra vez la ✕ para borrarla');return}
   await escribirSes(x=>({...x,log:x.log.filter(e=>e.id!==id)}),'Sesión borrada')}
 function abrirCompra(){if(sesDe(S.perfil,S.acceso).pend)return toast(`Ya tienes una compra esperando que ${ENTRENA.corto} la confirme.`);
