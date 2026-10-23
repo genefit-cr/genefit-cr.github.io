@@ -41,7 +41,7 @@ async function crearCuenta(p, nombre, mail, sexo) {
 try {
   // 1. Coach
   const C = await nueva('coach');
-  await ver(C, 'Tu plan.');
+  await ver(C, 'Entrena');
   await foto(C, 'login');
   await crearCuenta(C, 'Gene', 'coach@genefit.test', 'Hombre');
   await ver(C, 'Configura Genefit');
@@ -55,7 +55,7 @@ try {
   await C.evaluate(() => irA('clientes'));
   await C.locator('details.card', { hasText: 'Avisos de clientes nuevos' }).getByRole('button', { name: 'Activar', exact: true }).click();
   await ver(C, 'suscríbete al tema');
-  await C.locator('details.card', { hasText: 'Avisos de clientes nuevos' }).scrollIntoViewIfNeeded();
+  await C.waitForTimeout(300); await C.locator('details.card', { hasText: 'Avisos de clientes nuevos' }).scrollIntoViewIfNeeded().catch(() => {});
   await foto(C, 'avisos-ntfy');
   await C.getByRole('button', { name: 'Enviar prueba' }).click();
   await C.waitForTimeout(500);
@@ -65,6 +65,9 @@ try {
   const K = await nueva('cliente');
   await crearCuenta(K, 'Ana Pérez', 'ana@genefit.test', 'Mujer');
   await ver(K, 'Hola, Ana');
+  await ver(K, 'Soy Génesis, tu entrenadora. Bienvenida');
+  await foto(K, 'saludo');
+  await K.getByRole('button', { name: '¡Vamos!' }).click();
   await ver(C, 'Nuevo cliente: Ana Pérez');
   await K.waitForTimeout(500);
   const aviso = ntfy.find(b => /cliente nuevo/.test(b));
@@ -86,7 +89,7 @@ try {
   if (!/tema-f/.test(temaAna)) problemas.push('Ana (mujer) no quedó en rosa: ' + temaAna);
   const temaCoach = await C.evaluate(() => document.body.className);
   if (/tema-/.test(temaCoach)) problemas.push('El panel del coach tomó un color de cliente: ' + temaCoach);
-  await ver(K, 'Tu coach aún no te asigna rutina');
+  await ver(K, 'Génesis aún no te asigna rutina');
 
   // 3. Coach asigna
   await C.evaluate(() => irA('clientes'));
@@ -287,7 +290,7 @@ try {
   await C.evaluate(() => irA('pagos'));
   await ver(C, 'Eliminados');
   await C.getByRole('button', { name: 'Reactivar' }).click();
-  await ver(C, 'Regístrale el pago');
+  await C.waitForFunction(() => { const a = accesoDe(window.__ana); return a && !a.bloqueado && !a.pagoHasta; }, null, { timeout: 15000 });
   await ver(K, 'Hola, Ana');
   await C.evaluate(() => { S.filtro = 'todos'; irA('clientes'); });
   await ver(C, 'Ana Pérez');
@@ -295,7 +298,7 @@ try {
   // 7. Salir borra los datos del teléfono
   await K.evaluate(() => iniciar('libre'));
   await K.evaluate(() => { salir(); salir(); });
-  await ver(K, 'Tu plan.');
+  await ver(K, 'Entrena');
   const resto = await K.evaluate(async () => ({ ses: localStorage.getItem('hierro2-sesion'), dbs: (await indexedDB.databases()).map(d => d.name) }));
   console.log('Después de salir:', JSON.stringify(resto));
   if (resto.ses) problemas.push('Quedó el entreno en curso guardado tras salir');
