@@ -10,17 +10,18 @@ Esta guía explica cómo están protegidos y los pasos que hay que hacer **una v
 | Entrenos, récords, rutinas asignadas, chat | ✅ | ✅ | ❌ | ❌ |
 | Medidas y fotos **compartidas** | ✅ | ✅ | ❌ | ❌ |
 | Medidas, fotos y rutinas **privadas** | ✅ | ❌ | ❌ | ❌ |
-| Mensualidad (acceso) | solo ver | ✅ | ❌ | ❌ |
+| Sesiones compradas y usadas | ✅ (las compra y descuenta) | solo ver | ❌ | ❌ |
+| Acceso (suspendido o eliminado) | solo ver | ✅ | ❌ | ❌ |
 | Plantillas de rutinas del coach | ❌ | ✅ | ❌ | ❌ |
-| Comprobantes de pago SINPE | ✅ (los sube) | ✅ (los aprueba) | ❌ | ❌ |
+| Comprobantes de pago SINPE | ✅ (los adjunta) | ✅ (los revisa) | ❌ | ❌ |
 | Zonas de dolor que reporta | ✅ | ✅ | ❌ | ❌ |
 | Su nombre y número en un reto (solo si se une) | ✅ | ✅ | ✅ | ❌ |
-| Número SINPE y monto del coach | ✅ | ✅ | ✅ | ❌ |
+| Número SINPE y precio por sesión | ✅ | ✅ | ✅ | ❌ |
 
 Además:
 - Nadie puede hacerse pasar por el coach ni escribir mensajes a nombre de otra persona.
 - Los mensajes no se pueden editar después de enviados.
-- Un cliente no puede ponerse al día con el pago a sí mismo ni aprobar su propio comprobante.
+- El cliente registra él mismo sus compras de sesiones y cada sesión que usa; el coach no las puede cambiar, solo verlas. Un cliente no puede marcar su propio comprobante como revisado.
 - En los retos nadie puede inscribir a otra persona ni publicar más que su nombre y su número.
 - Un cliente eliminado ya no puede escribir en su ficha.
 - Las fotos solo se aceptan como imagen guardada dentro de Genefit (no enlaces externos).

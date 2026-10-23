@@ -103,6 +103,10 @@ await t('eve NO ve comprobante de bob', no(eve.doc('clientes/bob/comprobantes/c1
 await t('coach aprueba', ok(coach.doc('clientes/bob/comprobantes/c1').update({ estado: 'aprobado', revisado: 2 })));
 await t('coach limpia pendiente', ok(coach.doc('clientes/bob').update({ compPend: null })));
 // Dolor
+await t('bob compra y usa sesiones', ok(bob.doc('clientes/bob').update({ ses: { compradas: 10, log: [{ id: 'a', t: 1 }], paq: [{ id: 'p', t: 1, c: 10, m: 'efectivo' }] } })));
+await t('sesiones mal formadas', no(bob.doc('clientes/bob').update({ ses: { compradas: 'muchas', log: [], paq: [] } })));
+await t('coach NO cambia sesiones', no(coach.doc('clientes/bob').update({ ses: { compradas: 99, log: [], paq: [] } })));
+await t('comprobante con cantidad', ok(bob.doc('clientes/bob/comprobantes/c9').set({ img: foto, ref: '', monto: 80000, fecha: 1, estado: 'pendiente', cant: 10 })));
 await t('bob reporta dolor', ok(bob.doc('clientes/bob').update({ dolor: { z: { hombros: 2 }, nota: '', fecha: 1 } })));
 // Retos
 await t('coach crea reto', ok(coach.doc('retos/r1').set({ titulo: 'Nov', tipo: 'entrenos', desde: 0, hasta: 9e12, creado: 1 })));

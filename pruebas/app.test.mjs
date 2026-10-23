@@ -297,61 +297,66 @@ try {
   await ver(C, 'Ana Pérez');
   await C.evaluate(() => cerrarHoja());
 
-  // Clientes por sesión: paquete, sesiones con fecha y hora, lo que ve el cliente
-  await C.evaluate(() => { const c = S.clientes.find(x => x.alias === 'Ana Pérez'); window.__ana = c.id; abrirCliente(c.id); });
-  await C.getByRole('radio', { name: 'Por sesiones' }).click();
-  await ver(C, 'Agregar paquete de sesiones');
-  await C.getByRole('button', { name: '+ Agregar paquete de sesiones' }).click();
-  await C.getByRole('button', { name: 'Agregar sesiones' }).click();
-  await ver(C, 'de 10 restantes');
-  await C.getByRole('button', { name: 'Registrar sesión ahora' }).click();
-  await C.getByRole('button', { name: 'Otra fecha u hora' }).click();
-  await C.fill('#sf-t', '2026-10-20T18:30'); await C.fill('#sf-n', 'Pierna');
-  await C.getByRole('button', { name: 'Registrar sesión', exact: true }).click();
-  await C.waitForFunction(() => sesInfo(accesoDe(window.__ana)).rest === 8, null, { timeout: 15000 });
-  await C.locator('details', { hasText: 'Historial de sesiones' }).locator('summary').click();
-  await ver(C, 'Pierna');
-  await foto(C, 'sesiones-coach');
-  await K.evaluate(() => irA('hoy'));
-  await ver(K, 'Tus sesiones con Génesis');
-  await ver(K, 'de 10 te quedan');
-  await K.locator('details', { hasText: 'Ver todas mis sesiones' }).locator('summary').click();
-  await ver(K, 'Pierna');
-  await foto(K, 'sesiones-cliente');
-  await C.locator('details[open]', { hasText: 'Historial de sesiones' }).getByRole('button', { name: /Borrar la sesión/ }).first().click();
-  await C.locator('details[open]', { hasText: 'Historial de sesiones' }).getByRole('button', { name: /Borrar la sesión/ }).first().click();
-  await C.waitForFunction(() => sesInfo(accesoDe(window.__ana)).rest === 9, null, { timeout: 15000 });
-  await C.getByRole('radio', { name: 'Mensualidad' }).click();
-  await C.waitForFunction(() => accesoDe(window.__ana)?.plan === 'mes', null, { timeout: 15000 });
-
-  // 6. Pago vencido corta el acceso, y se paga por SINPE con comprobante
+  // Sesiones: el coach pone SINPE y precio; la clienta compra, adjunta comprobante y descuenta; el coach solo ve
+  const png = { name: 'comprobante.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64') };
   await C.evaluate(() => irA('pagos'));
-  await C.fill('#sp-tel', '8888-1234'); await C.fill('#sp-monto', '25000'); await C.fill('#sp-tit', 'Gene Fit');
+  await C.fill('#sp-tel', '8888-1234'); await C.fill('#sp-tit', 'Gene Fit');
   await C.getByRole('button', { name: 'Guardar datos de cobro' }).click();
   await ver(C, 'Datos de cobro guardados');
-  await C.evaluate(() => { const c = S.clientes.find(x => x.alias === 'Ana Pérez'); abrirCliente(c.id); });
-  await C.getByText('Pagó: +1 mes').click();
-  await ver(C, 'Pago registrado');
-  await C.evaluate(() => { const c = S.clientes.find(x => x.alias === 'Ana Pérez'); return S.db.doc('acceso/' + c.id).set({ pagoHasta: Date.now() - 1000 }, { merge: true }); });
-  await ver(K, 'Tu mensualidad venció');
-  await ver(K, '8888-1234'); await ver(K, '₡25');
-  await foto(K, 'vencido');
-  await K.fill('#comp-ref', '2026102299887766');
-  await K.setInputFiles('#comp-in', { name: 'comprobante.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64') });
-  await ver(K, 'lo está revisando');
-  await ver(C, 'Comprobante de SINPE por revisar');
-  await C.getByRole('button', { name: 'Revisar' }).first().click();
+  await K.evaluate(() => irA('hoy'));
+  await ver(K, 'Tus sesiones con Génesis');
+  await K.getByRole('button', { name: 'Comprar sesiones' }).click();
+  await K.fill('#cp-c', '25'); await K.locator('#cp-c').blur(); await K.waitForTimeout(100);
+  if (await K.evaluate(() => S.compra.c) !== 20) problemas.push('El máximo debía ser 20 sesiones');
+  await K.fill('#cp-c', '0'); await K.locator('#cp-c').blur(); await K.waitForTimeout(100);
+  if (await K.evaluate(() => S.compra.c) !== 1) problemas.push('El mínimo debía ser 1 sesiones');
+  await K.getByRole('button', { name: '12', exact: true }).click();
+  await ver(K, '12 sesiones · ₡144'); await ver(K, '8888-1234');
+  await K.fill('#cp-ref', '2026102299887766');
+  await K.setInputFiles('#cp-img', png);
+  await ver(K, 'Comprobante listo');
+  await foto(K, 'comprar-sesiones');
+  await K.getByRole('button', { name: 'Comprar 12 sesiones' }).click();
+  await ver(K, '12 sesiones · Pago por confirmar por Génesis');
+  if (await K.getByRole('button', { name: 'Usé una sesión' }).isEnabled()) problemas.push('No debía poder usar sesiones antes de la confirmación');
+  await foto(K, 'compra-pendiente');
+  // Génesis acepta el pago
+  await C.evaluate(() => { const c = S.clientes.find(x => x.alias === 'Ana Pérez'); window.__ana = c.id; abrirCliente(c.id); });
+  await ver(C, 'Compra por confirmar');
+  await C.getByRole('button', { name: 'Ver comprobante' }).click();
   await ver(C, '2026102299887766');
   await foto(C, 'revisar-comprobante');
-  await C.getByRole('button', { name: /^Aprobar/ }).click();
-  await ver(C, 'Pago registrado');
-  await ver(K, 'Hola, Ana');
+  await C.evaluate(() => cerrarHoja());
+  await foto(C, 'compra-por-confirmar');
+  await C.getByRole('button', { name: 'Aceptar pago' }).click();
+  await ver(C, 'Pago confirmado: 12 sesiones activas');
+  await ver(K, 'de 12 te quedan');
+  await K.getByRole('button', { name: 'Usé una sesión' }).click();
+  await K.fill('#us-t', '2026-10-20T18:30'); await K.fill('#us-n', 'Pierna');
+  await K.getByRole('button', { name: 'Descontar 1 sesión' }).click();
+  await K.waitForFunction(() => sesDe(S.perfil, S.acceso).rest === 11, null, { timeout: 15000 });
+  await K.locator('details', { hasText: 'Mis compras' }).locator('summary').click();
+  await ver(K, 'Pago confirmado por Génesis ✓');
+  await K.locator('details', { hasText: 'Ver mis sesiones' }).locator('summary').click();
+  await ver(K, 'Pierna');
+  await foto(K, 'sesiones-cliente');
+  // El cliente no puede activarse sesiones solo
+  const truco = await K.evaluate(() => S.db.doc('acceso/' + S.me).set({ sesAprob: { x: { c: 99, t: 1 } } }, { merge: true }).then(() => 'pasó', e => e.code));
+  if (truco !== 'permission-denied') problemas.push('El cliente pudo aprobarse sesiones: ' + truco);
+  await ver(C, 'de 12 restantes');
+  if (await C.getByRole('button', { name: /Usé una sesión|Registrar sesión/ }).count()) problemas.push('El coach no debía poder registrar sesiones');
+  await C.locator('details', { hasText: 'Sesiones usadas' }).locator('summary').click();
+  await ver(C, 'Pierna');
+  await C.locator('details', { hasText: 'Compras (' }).locator('summary').click();
+  await ver(C, 'SINPE Móvil');
+  await foto(C, 'sesiones-coach');
   const est = await K.evaluate(() => S.comp[0]?.estado);
-  if (est !== 'aprobado') problemas.push('El comprobante no quedó aprobado: ' + est);
+  if (est !== 'aprobado') problemas.push('El comprobante no quedó confirmado: ' + est);
+  // Lo que el coach había anotado antes (versión anterior) cuenta como confirmado
+  await C.evaluate(() => S.db.doc('acceso/' + window.__ana).set({ sesCompradas: 5, sesLog: [{ id: 'x1', t: 1760000000000 }] }, { merge: true }));
+  await K.waitForFunction(() => { const s = sesDe(S.perfil, S.acceso); return s.comp === 17 && s.rest === 15; }, null, { timeout: 15000 });
 
-  // Eliminar y reactivar a un cliente con la mensualidad vencida
-  await C.evaluate(() => { const c = S.clientes.find(x => x.alias === 'Ana Pérez'); window.__ana = c.id; return S.db.doc('acceso/' + c.id).set({ pagoHasta: Date.now() - 1000 }, { merge: true }); });
-  await ver(K, 'Tu mensualidad venció');
+  // Eliminar y reactivar a un cliente (sin mensualidad)
   await C.evaluate(() => { cerrarHoja(); abrirCliente(window.__ana); });
   await C.getByRole('button', { name: 'Eliminar a Ana Pérez' }).click();
   await C.getByRole('button', { name: /Toca otra vez para eliminar/ }).click();
@@ -360,7 +365,7 @@ try {
   await C.evaluate(() => irA('pagos'));
   await ver(C, 'Eliminados');
   await C.getByRole('button', { name: 'Reactivar' }).click();
-  await C.waitForFunction(() => { const a = accesoDe(window.__ana); return a && !a.bloqueado && !a.pagoHasta; }, null, { timeout: 15000 });
+  await C.waitForFunction(() => { const a = accesoDe(window.__ana); return a && !a.bloqueado; }, null, { timeout: 15000 });
   await ver(K, 'Hola, Ana');
   await C.evaluate(() => { S.filtro = 'todos'; irA('clientes'); });
   await ver(C, 'Ana Pérez');
