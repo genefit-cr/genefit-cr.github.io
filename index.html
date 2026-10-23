@@ -1258,27 +1258,30 @@ const fechaHora=t=>new Date(t).toLocaleString('es-CR',{weekday:'short',day:'nume
 function sesDe(c,a){const x=c?.ses||{},ap=a?.sesAprob||{},re=a?.sesRech||{};
   const paq=[...(x.paq||[]).map(p=>({...p,estado:ap[p.id]?'ok':re[p.id]?'no':'pend',c:ap[p.id]?.c??p.c,pidio:p.c})),...(a?.sesPaq||[]).map(p=>({id:'g'+p.t,t:p.t,c:p.c,m:'genesis',estado:'ok',...(p.n?{ref:p.n}:{})}))].sort((p,q)=>q.t-p.t);
   const comp=(a?.sesCompradas||0)+Object.values(ap).reduce((s,v)=>s+(+v?.c||0),0);
-  const log=[...(a?.sesLog||[]).map(l=>({...l,g:1})),...(x.log||[])].sort((p,q)=>q.t-p.t);
-  return{comp,us:log.length,rest:comp-log.length,log,paq,pend:paq.find(p=>p.estado==='pend')||null}}
+  const an=a?.sesAnul||{},log=[...(a?.sesLog||[]).map(l=>({...l,g:1})),...(x.log||[])].map(l=>an[l.id]?{...l,anul:1}:l).sort((p,q)=>q.t-p.t);
+  const us=log.filter(l=>!l.anul).length;
+  return{comp,us,rest:comp-us,log,ult:log.find(l=>!l.anul),paq,pend:paq.find(p=>p.estado==='pend')||null}}
 const sesCli=c=>sesDe(c,accesoDe(c.id));
 function estadoSes(c){const s=sesCli(c);if(s.pend)return{k:'pend',t:'Por confirmar',cls:'pr'};if(!s.comp)return{k:'sin',t:'Sin sesiones',cls:'nada'};
   if(s.rest<0)return{k:'venc',t:`Debe ${-s.rest}`,cls:'mal'};if(s.rest===0)return{k:'venc',t:'Se acabaron',cls:'mal'};
   if(s.rest<=2)return{k:'pronto',t:`Quedan ${s.rest}`,cls:'alerta'};return{k:'ok',t:`${s.rest} sesiones`,cls:'ok'}}
 const pillSes=c=>c.id===S.me?'':(p=>`<span class="pill ${p.cls}">${p.t}</span>`)(estadoSes(c));
 const estadoCompra=p=>p.estado==='ok'?`Pago confirmado por ${ENTRENA.corto} ✓`:p.estado==='no'?`${ENTRENA.corto} no recibió el pago`:`Pago por confirmar por ${ENTRENA.corto}`;
-const listaSesiones=(s,borrar)=>s.log.map((x,k)=>`<div class="list-row"><span class="grow"><b class="num">#${s.us-k}</b> · ${fechaHora(x.t)}${x.r?`<span style="display:block;font-weight:600">Rutina: ${esc(x.r)}</span>`:''}${x.n?`<span class="small" style="display:block">${esc(x.n)}</span>`:''}${x.g?'<span class="small" style="display:block">Anotada por '+ENTRENA.corto+'</span>':''}</span>${borrar&&!x.g?`<button class="iconbtn" onclick="borrarMiSesion(${J(x.id)},this)" aria-label="Borrar la sesión del ${fechaHora(x.t)}">${IC.x}</button>`:''}</div>`).join('');
+// Lista de sesiones usadas. El cliente no las puede borrar; el coach (cid) puede anular o restaurar.
+const listaSesiones=(s,cid)=>{let k=s.us+1;return s.log.map(x=>{if(!x.anul)k--;
+  return `<div class="list-row"${x.anul?' style="opacity:.6"':''}><span class="grow">${x.anul?'<b>Anulada</b>':`<b class="num">#${k}</b>`} · ${x.anul?`<s>${fechaHora(x.t)}</s>`:fechaHora(x.t)}${x.r?`<span style="display:block;font-weight:600">Rutina: ${esc(x.r)}</span>`:''}${x.n?`<span class="small" style="display:block">${esc(x.n)}</span>`:''}${x.anul?`<span class="small" style="display:block">Anulada por ${ENTRENA.corto}, no cuenta</span>`:x.g?'<span class="small" style="display:block">Anotada por '+ENTRENA.corto+'</span>':''}</span>${cid?`<button class="btn sm ${x.anul?'ghost':'danger'}" onclick="anularSesion(${J(cid)},${J(x.id)},${x.anul?1:0},this)">${x.anul?'Restaurar':'Anular'}</button>`:''}</div>`}).join('')}
 const listaCompras=(s,cid)=>s.paq.map(x=>`<div class="list-row" style="align-items:flex-start"><span class="grow"><b>${x.c} sesiones</b><span class="small" style="display:block;color:${x.estado==='ok'?'var(--ok-fg)':x.estado==='no'?'var(--danger)':'var(--gold)'}">${estadoCompra(x)}</span>${x.estado==='ok'&&x.pidio&&x.pidio!==x.c?`<span class="small" style="display:block">Ajustada por ${ENTRENA.corto} (se pidieron ${x.pidio})</span>`:''}<span class="small" style="display:block">${esc(METODOS[x.m]||x.m||'')}${x.ref?' · ref. '+esc(x.ref):''}</span></span><span style="text-align:right"><span class="small">${fecha(x.t)}</span>${cid&&x.comp?`<button class="btn sm ghost" style="display:block;margin-top:4px" onclick="verComprobante(${J(cid)},${J(x.comp)})">Comprobante</button>`:''}</span></div>`).join('');
 function escribirSes(cambio,msg){const x=S.perfil?.ses||{};const n=cambio({compradas:0,log:[...(x.log||[])],paq:[...(x.paq||[])]});return escribir(()=>S.db.doc(BASE()).update({ses:n}),msg)}
 /* Cliente */
 function tarjetaSesiones(){if(S.esOwner||!S.perfil)return'';const s=sesDe(S.perfil,S.acceso),nom=ENTRENA.corto;
   return `<section class="card line" ${s.comp&&s.rest<=0&&!s.pend?'style="border-color:var(--warn)"':''}><div class="row between"><b>Tus sesiones con ${nom}</b>${s.us?`<span class="small">${s.us} usada${s.us===1?'':'s'}</span>`:''}</div>
    ${s.comp?`<div class="row" style="align-items:baseline;gap:8px"><span class="big num" style="font-size:44px">${Math.max(0,s.rest)}</span><span class="small">de ${s.comp} te quedan</span></div>
-     <div class="prog"><i style="width:${Math.min(100,s.us/s.comp*100)}%"></i></div>${s.log[0]?`<span class="small">Última: <b style="color:var(--fg)">${fechaHora(s.log[0].t)}</b></span>`:''}`
+     <div class="prog"><i style="width:${Math.min(100,s.us/s.comp*100)}%"></i></div>${s.ult?`<span class="small">Última: <b style="color:var(--fg)">${fechaHora(s.ult.t)}</b></span>`:''}`
     :s.pend?'':`<span class="small">Compra tu paquete de ${SES_MIN} a ${SES_MAX} sesiones. Cuando ${nom} confirme el pago, empiezan a contar.</span>`}
    ${s.pend?`<div class="card line" style="border-color:var(--gold);background:var(--gold-bg);padding:12px;gap:4px"><b>${s.pend.c} sesiones · ${estadoCompra(s.pend)}</b><span class="small" style="color:var(--fg)">${esc(METODOS[s.pend.m]||'')} · ${fechaHora(s.pend.t)}. Te avisamos aquí cuando las confirme.</span></div>`:''}
    ${s.comp&&s.rest<=0&&!s.pend?`<div class="notice" style="color:var(--fg)">${s.rest<0?`Debes ${-s.rest} sesi${s.rest===-1?'ón':'ones'}.`:'Se te acabaron las sesiones.'} Compra otro paquete para seguir.</div>`:''}
    <div class="grid2"><button class="btn primary" onclick="abrirUsar()" ${s.rest>0?'':'disabled'}>Usé una sesión</button><button class="btn ${s.rest>0?'ghost':'primary'}" onclick="abrirCompra()" ${s.pend?'disabled':''}>${s.pend?'Compra en espera':'Comprar sesiones'}</button></div>
-   ${s.log.length?`<details><summary style="font-weight:700;cursor:pointer;padding:6px 0;color:var(--accent)">Ver mis sesiones (${s.us})</summary>${listaSesiones(s,true)}</details>`:''}
+   ${s.log.length?`<details><summary style="font-weight:700;cursor:pointer;padding:6px 0;color:var(--accent)">Ver mis sesiones (${s.us})</summary>${listaSesiones(s)}<span class="small">¿Te equivocaste en una? Escríbele a ${nom} por el chat para que la anule.</span></details>`:''}
    ${s.paq.length?`<details><summary style="font-weight:700;cursor:pointer;padding:6px 0;color:var(--accent)">Mis compras (${s.paq.length})</summary>${listaCompras(s)}</details>`:''}</section>`}
 function abrirUsar(){const s=sesDe(S.perfil,S.acceso);if(s.rest<=0)return toast(s.pend?`Espera a que ${ENTRENA.corto} confirme tu pago.`:'No te quedan sesiones. Compra otro paquete.');
   const d=new Date(),iso=new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);
@@ -1300,8 +1303,6 @@ async function usarSesion(){const v=$('#us-t')?.value;if(!v)return toast('Elige 
   if(!r){$('#us-r')?.focus();return toast('Escribe qué rutina hiciste')}
   const s=sesDe(S.perfil,S.acceso);if(s.rest<=0)return toast('No te quedan sesiones.');
   if(await escribirSes(x=>({...x,log:[...x.log,{id:uid(),t,r,...(n?{n}:{})}]}),`Listo. Te quedan ${s.rest-1}.`))cerrarHoja()}
-async function borrarMiSesion(id,b){if(!b.dataset.ok){b.dataset.ok=1;b.style.color='var(--danger)';toast('Toca otra vez la ✕ para borrarla');return}
-  await escribirSes(x=>({...x,log:x.log.filter(e=>e.id!==id)}),'Sesión borrada')}
 function abrirCompra(){if(sesDe(S.perfil,S.acceso).pend)return toast(`Ya tienes una compra esperando que ${ENTRENA.corto} la confirme.`);
   S.compra=S.compra||{c:12,m:'sinpe',ref:''};const k=S.compra,cfg=S.coachCfg||{},precio=PRECIO_SESION,total=precio*k.c;
   if(k.m==='sinpe'&&!cfg.sinpe)k.m='efectivo';
@@ -1348,6 +1349,11 @@ async function rechazarCompra(cid,id,b){if(!b.dataset.ok){b.dataset.ok=1;b.textC
     if(p.comp){await S.db.doc(`clientes/${cid}/comprobantes/${p.comp}`).update({estado:'rechazado',revisado:Date.now()}).catch(()=>{});if(c?.compPend?.id===p.comp)await S.db.doc('clientes/'+cid).update({compPend:del})}
     await avisarCliente(cid,`No pude confirmar tu pago de ${p.c} sesiones. ¿Me ayudas con la referencia o lo revisamos juntos?`)},'Compra rechazada. Le avisamos por el chat.')}
 async function avisarCliente(cid,texto){const m={de:S.me,texto,fecha:Date.now()};await S.db.collection('clientes/'+cid+'/mensajes').doc('m'+uid()).set(m);await S.db.doc('clientes/'+cid).update({ultMsg:m})}
+/* Coach: anular una sesión usada por error (o restaurarla). Queda el registro. */
+async function anularSesion(cid,id,deshacer,b){if(!deshacer&&!b.dataset.ok){b.dataset.ok=1;b.textContent='¿Seguro? Toca otra vez';return}
+  const c=S.clientes.find(x=>x.id===cid),l=c&&sesCli(c).log.find(x=>x.id===id);if(!l)return;
+  await escribir(async()=>{await S.db.doc('acceso/'+cid).set({sesAnul:{[id]:deshacer?firebase.firestore.FieldValue.delete():Date.now()},alias:aliasDe(cid)},{merge:true});
+    await avisarCliente(cid,deshacer?`Volví a contar tu sesión del ${fechaHora(l.t)}.`:`Anulé tu sesión del ${fechaHora(l.t)}${l.r?' ('+l.r+')':''}. Ya no se descuenta.`)},deshacer?'Sesión restaurada':'Sesión anulada. Le avisamos por el chat.')}
 /* Coach: cambiar o anular compras ya confirmadas (ej. pidió 20 y solo pagó 10) */
 const comprasAjustables=c=>sesCli(c).paq.filter(p=>p.estado==='ok'&&p.m!=='genesis');
 function abrirAjuste(cid){const c=S.clientes.find(x=>x.id===cid);if(!c)return;const s=sesCli(c),l=comprasAjustables(c);
@@ -1368,9 +1374,9 @@ async function anularCompra(cid,id,b){if(!b.dataset.ok){b.dataset.ok=1;b.textCon
 function cardSesionesCoach(c,n){const s=sesCli(c),p=estadoSes(c),a=accesoDe(c.id);
   return cajaCompraPend(c)+`<section class="card"><div class="row between"><b>Sesiones</b><span class="pill ${p.cls}">${p.t}</span></div>
    ${s.comp?`<div class="row" style="align-items:baseline;gap:8px"><span class="big num" style="font-size:44px;${s.rest<0?'color:var(--danger)':''}">${s.rest<0?'−'+(-s.rest):s.rest}</span><span class="small">${s.rest<0?'usadas sin pagar':'de '+s.comp+' restantes'} · ${s.us} usada${s.us===1?'':'s'}</span></div>
-     <div class="prog"><i style="width:${Math.min(100,s.us/s.comp*100)}%"></i></div>${s.log[0]?`<span class="small">Última: <b style="color:var(--fg)">${fechaHora(s.log[0].t)}</b></span>`:''}`
+     <div class="prog"><i style="width:${Math.min(100,s.us/s.comp*100)}%"></i></div>${s.ult?`<span class="small">Última: <b style="color:var(--fg)">${fechaHora(s.ult.t)}</b></span>`:''}`
     :`<span class="small">${esc(n)} todavía no tiene sesiones confirmadas.</span>`}
-   ${s.log.length?`<details><summary style="font-weight:700;cursor:pointer;padding:6px 0">Sesiones usadas (${s.us})</summary>${listaSesiones(s,false)}</details>`:''}
+   ${s.log.length?`<details><summary style="font-weight:700;cursor:pointer;padding:6px 0">Sesiones usadas (${s.us})</summary>${listaSesiones(s,c.id)}</details>`:''}
    ${s.paq.length?`<details><summary style="font-weight:700;cursor:pointer;padding:6px 0">Compras (${s.paq.length})</summary>${listaCompras(s,c.id)}</details>`:''}
    ${comprasAjustables(c).length?`<button class="btn ghost block" onclick="abrirAjuste(${J(c.id)})">Ajustar o anular compras</button>`:''}
    ${a?.bloqueado?`<button class="btn ghost block" onclick="suspender(${J(c.id)},false)">Reactivar acceso</button>`:`<button class="btn danger block" onclick="suspender(${J(c.id)},true,this)">Suspender acceso ya</button>`}
@@ -1531,7 +1537,7 @@ function vPagos(){const C=S.clientes.filter(c=>c.id!==S.me).map(c=>({c,n:nombreC
   h+=`<div class="grid3"><div class="tile"><span class="big" style="color:var(--accent)">${cuenta('ok')}</span><span class="tiny">Con sesiones</span></div><div class="tile"><span class="big" style="color:var(--warn)">${cuenta('pronto')}</span><span class="tiny">Les quedan 1 o 2</span></div><div class="tile"><span class="big" style="color:var(--danger)">${cuenta('venc')}</span><span class="tiny">Se les acabaron</span></div></div>`;
   if(!C.length&&!fuera.length)return h+cardSinpeCoach()+`<div class="empty">Cuando tus clientes compren sesiones, aquí ves cuántas les quedan.</div></div>`;
   const orden={pend:0,venc:1,pronto:2,ok:3,sin:4};
-  h+=`<div class="stack s8">${[...C].sort((x,y)=>orden[x.p.k]-orden[y.p.k]||x.s.rest-y.s.rest).map(({c,n,p,s})=>`<button class="card" style="padding:12px;border:0;text-align:left;color:var(--fg);flex-direction:row;align-items:center" onclick="abrirCliente(${J(c.id)})">${avatar(n)}<span class="grow" style="min-width:0"><b style="display:block">${esc(n)}</b><span class="small">${s.comp?`${s.us} de ${s.comp} usadas${s.log[0]?' · última '+fechaHora(s.log[0].t):''}`:'Todavía no compra sesiones'}</span></span><span class="pill ${p.cls}">${p.t}</span></button>`).join('')}</div>`;
+  h+=`<div class="stack s8">${[...C].sort((x,y)=>orden[x.p.k]-orden[y.p.k]||x.s.rest-y.s.rest).map(({c,n,p,s})=>`<button class="card" style="padding:12px;border:0;text-align:left;color:var(--fg);flex-direction:row;align-items:center" onclick="abrirCliente(${J(c.id)})">${avatar(n)}<span class="grow" style="min-width:0"><b style="display:block">${esc(n)}</b><span class="small">${s.comp?`${s.us} de ${s.comp} usadas${s.ult?' · última '+fechaHora(s.ult.t):''}`:'Todavía no compra sesiones'}</span></span><span class="pill ${p.cls}">${p.t}</span></button>`).join('')}</div>`;
   if(fuera.length)h+=`<span class="lbl">Eliminados</span><div class="stack s8">${fuera.map(a=>`<div class="card" style="padding:12px;flex-direction:row;align-items:center">${avatar(a.alias||'Cliente')}<b class="grow">${esc(a.alias||'Cliente')}</b><button class="btn ghost sm" onclick="suspender(${J(a.id)},false)">Reactivar</button></div>`).join('')}</div><span class="small">Si reactivas a alguien eliminado, vuelve a aparecer en tu lista la próxima vez que abra Genefit.</span>`;
   h+=cardSinpeCoach();
   return h+'</div>'}

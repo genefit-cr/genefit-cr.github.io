@@ -354,6 +354,21 @@ try {
   await C.locator('details', { hasText: 'Compras (' }).locator('summary').click();
   await ver(C, 'SINPE Móvil');
   await foto(C, 'sesiones-coach');
+  // El cliente NO puede borrar una sesión usada; Génesis la anula y la restaura
+  if (await K.locator('[aria-label^="Borrar la sesión"]').count()) problemas.push('El cliente todavía ve la ✕ para borrar sesiones');
+  const borra = await K.evaluate(() => S.db.doc(BASE()).update({ ses: { ...S.perfil.ses, log: [] } }).then(() => 'pasó', e => e.code));
+  if (borra !== 'permission-denied') problemas.push('El cliente pudo borrar sesiones usadas: ' + borra);
+  await C.getByRole('button', { name: 'Anular', exact: true }).click();
+  await C.getByRole('button', { name: '¿Seguro? Toca otra vez' }).click();
+  await ver(C, 'Sesión anulada');
+  await K.waitForFunction(() => sesDe(S.perfil, S.acceso).rest === 12, null, { timeout: 15000 });
+  await K.waitForFunction(() => (S.perfil?.ultMsg?.texto || '').includes('Anulé tu sesión'), null, { timeout: 15000 });
+  await C.locator('details', { hasText: 'Sesiones usadas' }).locator('summary').click().catch(() => {});
+  await ver(C, 'Anulada por Génesis');
+  await foto(C, 'sesion-anulada');
+  await C.getByRole('button', { name: 'Restaurar', exact: true }).click();
+  await ver(C, 'Sesión restaurada');
+  await K.waitForFunction(() => sesDe(S.perfil, S.acceso).rest === 11, null, { timeout: 15000 });
   const est = await K.evaluate(() => S.comp[0]?.estado);
   if (est !== 'aprobado') problemas.push('El comprobante no quedó confirmado: ' + est);
   // Lo que el coach había anotado antes (versión anterior) cuenta como confirmado
