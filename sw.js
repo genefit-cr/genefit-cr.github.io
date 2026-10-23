@@ -3,8 +3,8 @@
      si no hay señal, se usa la copia guardada.
    - Librerías, letras y fotos de ejercicios se guardan la primera vez.
    - Los datos de Firebase NO pasan por aquí: Firebase tiene su propio modo sin señal. */
-const VERSION = 'gf-v6';
-const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/genesis.jpg', './icons/genesis-afiche.jpg',
+const VERSION = 'gf-v7';
+const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/genesis-retrato.jpg', './icons/genesis-afiche.jpg',
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js',
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js'];

@@ -186,9 +186,7 @@ body.tema-f{--accent:#FF6EB4;--ok-bg:#331020;--ok-line:#6E2249;--ok-fg:#EBB0CC;-
 @media (prefers-reduced-motion:reduce){.v3d canvas{transition:none}}
 /* Foto de la entrenadora */
 .afiche{width:100%;height:auto;aspect-ratio:900/898;border-radius:20px;display:block;background:var(--card)}
-.coachfoto,.fcoach{object-fit:cover;object-position:50% 12%;flex:none;background:var(--raise)}
-.fcoach{border-radius:14px}
-.coachfoto{width:34px;height:34px;border-radius:9px;margin-left:2px}
+.fcoach{object-fit:cover;object-position:50% 12%;flex:none;background:var(--raise);border-radius:14px}
 .saludo{border-color:var(--accent);background:linear-gradient(160deg,var(--ok-bg),var(--card) 70%)}
 /* Hojas y pantallas superpuestas */
 .sheet-bg{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center}
@@ -244,7 +242,7 @@ body.tema-f{--accent:#FF6EB4;--ok-bg:#331020;--ok-line:#6E2249;--ok-fg:#EBB0CC;-
 <body>
 <div class="wrap" id="app">
   <div class="top" id="top">
-    <span class="row" style="gap:10px"><span class="marca"><i><svg viewBox="0 0 24 24" fill="none" stroke="#0E0F12" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6v12M18 6v12M3 9v6M21 9v6M6 12h12"/></svg></i>GENEFIT<img class="coachfoto" src="icons/genesis-retrato.jpg" alt="Génesis Garita, entrenadora" width="34" height="34"></span><span id="rol" class="rol" hidden>COACH</span></span>
+    <span class="row" style="gap:10px"><span class="marca"><i><svg viewBox="0 0 24 24" fill="none" stroke="#0E0F12" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6v12M18 6v12M3 9v6M21 9v6M6 12h12"/></svg></i>GENEFIT</span><span id="rol" class="rol" hidden>COACH</span></span>
     <span id="modoBtn"></span>
   </div>
   <main id="view"><div class="cargando">Cargando Genefit…</div></main>
