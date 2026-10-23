@@ -300,18 +300,18 @@ try {
   // Sesiones: el coach pone SINPE y precio; la clienta compra, adjunta comprobante y descuenta; el coach solo ve
   const png = { name: 'comprobante.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64') };
   await C.evaluate(() => irA('pagos'));
-  await C.fill('#sp-tel', '8888-1234'); await C.fill('#sp-monto', '8000'); await C.fill('#sp-tit', 'Gene Fit');
+  await C.fill('#sp-tel', '8888-1234'); await C.fill('#sp-tit', 'Gene Fit');
   await C.getByRole('button', { name: 'Guardar datos de cobro' }).click();
   await ver(C, 'Datos de cobro guardados');
   await K.evaluate(() => irA('hoy'));
   await ver(K, 'Tus sesiones con Génesis');
   await K.getByRole('button', { name: 'Comprar sesiones' }).click();
-  await K.fill('#cp-c', '20'); await K.locator('#cp-c').blur(); await K.waitForTimeout(100);
-  if (await K.evaluate(() => S.compra.c) !== 16) problemas.push('El máximo debía ser 16 sesiones');
-  await K.fill('#cp-c', '3'); await K.locator('#cp-c').blur(); await K.waitForTimeout(100);
-  if (await K.evaluate(() => S.compra.c) !== 8) problemas.push('El mínimo debía ser 8 sesiones');
+  await K.fill('#cp-c', '25'); await K.locator('#cp-c').blur(); await K.waitForTimeout(100);
+  if (await K.evaluate(() => S.compra.c) !== 20) problemas.push('El máximo debía ser 20 sesiones');
+  await K.fill('#cp-c', '0'); await K.locator('#cp-c').blur(); await K.waitForTimeout(100);
+  if (await K.evaluate(() => S.compra.c) !== 1) problemas.push('El mínimo debía ser 1 sesiones');
   await K.getByRole('button', { name: '12', exact: true }).click();
-  await ver(K, '12 sesiones · ₡96'); await ver(K, '8888-1234');
+  await ver(K, '12 sesiones · ₡144'); await ver(K, '8888-1234');
   await K.fill('#cp-ref', '2026102299887766');
   await K.setInputFiles('#cp-img', png);
   await ver(K, 'Comprobante listo');

@@ -1089,13 +1089,12 @@ const telFmt=t=>String(t||'').replace(/\D/g,'').replace(/^(\d{4})(\d{4})$/,'$1-$
 function copiar(txt,msg){const ok=()=>toast(msg||'Copiado');try{navigator.clipboard.writeText(String(txt)).then(ok,()=>toast(String(txt)))}catch(e){toast(String(txt))}}
 /* Coach: datos de cobro y revisión de comprobantes */
 function cardSinpeCoach(){const c=S.coachCfg||{};
-  return `<details class="card" ${c.sinpe?'':'open'}><summary style="font-weight:700;cursor:pointer">Cobro por SINPE Móvil ${c.sinpe?`<span class="small" style="font-weight:500"> · ${esc(telFmt(c.sinpe))} · ${c.monto?colones(c.monto):''}</span>`:''}</summary>
-   <form class="stack" style="margin-top:12px" onsubmit="guardarSinpe(event)"><div class="grid2"><div class="field"><label class="lbl" for="sp-tel">Número SINPE</label><input class="input" id="sp-tel" type="tel" inputmode="numeric" maxlength="9" required placeholder="8888-8888" value="${esc(telFmt(c.sinpe))}"></div>
-    <div class="field"><label class="lbl" for="sp-monto">Precio por sesión (₡)</label><input class="input" id="sp-monto" type="number" inputmode="numeric" min="0" step="500" required value="${esc(c.monto||'')}"></div></div>
+  return `<details class="card" ${c.sinpe?'':'open'}><summary style="font-weight:700;cursor:pointer">Cobro por SINPE Móvil ${c.sinpe?`<span class="small" style="font-weight:500"> · ${esc(telFmt(c.sinpe))}</span>`:''}</summary>
+   <form class="stack" style="margin-top:12px" onsubmit="guardarSinpe(event)"><div class="field"><label class="lbl" for="sp-tel">Número SINPE</label><input class="input" id="sp-tel" type="tel" inputmode="numeric" maxlength="9" required placeholder="8888-8888" value="${esc(telFmt(c.sinpe))}"></div>
     <div class="field"><label class="lbl" for="sp-tit">A nombre de</label><input class="input" id="sp-tit" maxlength="60" value="${esc(c.titular||S.coachNombre||'')}"></div>
-    <button class="btn primary block">Guardar datos de cobro</button><span class="small">Tus clientes ven este número y el precio por sesión al comprar, y pueden adjuntar el comprobante.</span></form></details>`}
+    <button class="btn primary block">Guardar datos de cobro</button><span class="small">Tus clientes ven este número al comprar (${colones(PRECIO_SESION)} por sesión), y pueden adjuntar el comprobante.</span></form></details>`}
 async function guardarSinpe(ev){ev.preventDefault();const tel=$('#sp-tel').value.replace(/\D/g,'');if(tel.length!==8)return toast('El número SINPE debe tener 8 dígitos');
-  await escribir(()=>S.db.doc('config/coach').set({sinpe:tel,monto:Math.max(0,+$('#sp-monto').value||0),titular:$('#sp-tit').value.trim().slice(0,60)},{merge:true}),'Datos de cobro guardados')}
+  await escribir(()=>S.db.doc('config/coach').set({sinpe:tel,titular:$('#sp-tit').value.trim().slice(0,60)},{merge:true}),'Datos de cobro guardados')}
 function filaComp(c){const p=c.compPend,n=nombreCliente(c);return `<div class="card" style="padding:12px;flex-direction:row;align-items:center">${avatar(n)}<div class="grow"><b>${esc(n)}</b><div class="small">Comprobante ${p.monto?'de '+colones(p.monto)+' ':''}· ${hace(p.fecha)}</div></div><button class="btn sm primary" onclick="revisarComp(${J(c.id)})">Revisar</button></div>`}
 async function revisarComp(cid){const p=S.clientes.find(x=>x.id===cid)?.compPend;if(p)verComprobante(cid,p.id)}
 async function aprobarComp(cid,id){const del=firebase.firestore.FieldValue.delete();
@@ -1253,7 +1252,7 @@ function ajusteHuella(){if(!HUELLA_OK)return'';const on=!!huella();
    Confirmación del pago: acceso/{uid}.sesAprob = {idCompra:{c,t}} y sesRech = {idCompra:t} — solo lo escribe el coach,
    así que nadie puede activarse sesiones sin que Génesis acepte el pago.
    Lo que el coach anotaba antes (acceso.sesCompradas / sesLog / sesPaq) cuenta como confirmado. */
-const SES_MIN=8,SES_MAX=16;
+const SES_MIN=1,SES_MAX=20,PRECIO_SESION=12000;
 const METODOS={sinpe:'SINPE Móvil',efectivo:'Efectivo',transf:'Transferencia',genesis:'Registrado por Génesis'};
 const fechaHora=t=>new Date(t).toLocaleString('es-CR',{weekday:'short',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});
 function sesDe(c,a){const x=c?.ses||{},ap=a?.sesAprob||{},re=a?.sesRech||{};
@@ -1294,10 +1293,10 @@ async function usarSesion(){const v=$('#us-t')?.value;if(!v)return toast('Elige 
 async function borrarMiSesion(id,b){if(!b.dataset.ok){b.dataset.ok=1;b.style.color='var(--danger)';toast('Toca otra vez la ✕ para borrarla');return}
   await escribirSes(x=>({...x,log:x.log.filter(e=>e.id!==id)}),'Sesión borrada')}
 function abrirCompra(){if(sesDe(S.perfil,S.acceso).pend)return toast(`Ya tienes una compra esperando que ${ENTRENA.corto} la confirme.`);
-  S.compra=S.compra||{c:12,m:'sinpe',ref:''};const k=S.compra,cfg=S.coachCfg||{},precio=+cfg.monto||0,total=precio*k.c;
+  S.compra=S.compra||{c:12,m:'sinpe',ref:''};const k=S.compra,cfg=S.coachCfg||{},precio=PRECIO_SESION,total=precio*k.c;
   if(k.m==='sinpe'&&!cfg.sinpe)k.m='efectivo';
   abrirHoja(`<div class="row between"><h2>Comprar sesiones</h2><button class="iconbtn" onclick="cerrarHoja()" aria-label="Cerrar">${IC.x}</button></div>
-   <div class="body"><span class="lbl">¿Cuántas sesiones? (de ${SES_MIN} a ${SES_MAX})</span><div class="chips">${[8,10,12,14,16].map(c=>`<button class="chip" aria-pressed="${k.c===c}" onclick="S.compra.c=${c};abrirCompra()">${c}</button>`).join('')}</div>
+   <div class="body"><span class="lbl">¿Cuántas sesiones? (de ${SES_MIN} a ${SES_MAX})</span><div class="chips">${[1,4,8,12,16,20].map(c=>`<button class="chip" aria-pressed="${k.c===c}" onclick="S.compra.c=${c};abrirCompra()">${c}</button>`).join('')}</div>
    <div class="field"><label class="lbl" for="cp-c">Otra cantidad</label><input class="input num" id="cp-c" type="number" inputmode="numeric" min="${SES_MIN}" max="${SES_MAX}" value="${k.c}" onchange="S.compra.c=Math.max(${SES_MIN},Math.min(${SES_MAX},Math.round(+this.value||${SES_MIN})));setTimeout(abrirCompra)"></div>
    <div class="tile" style="background:var(--raise)"><span class="tiny">Vas a comprar</span><span class="big" style="font-size:26px">${k.c} sesiones${precio?' · '+colones(total):''}</span>${precio?`<span class="tiny">${k.c} × ${colones(precio)}</span>`:''}</div>
    <span class="lbl">¿Cómo pagas?</span><div class="chips" role="radiogroup">${Object.entries(METODOS).filter(([m])=>m!=='genesis'&&(m!=='sinpe'||cfg.sinpe)).map(([m,l])=>`<button class="chip" role="radio" aria-checked="${k.m===m}" aria-pressed="${k.m===m}" onclick="S.compra.m='${m}';abrirCompra()">${l}</button>`).join('')}</div>
@@ -1310,7 +1309,7 @@ function abrirCompra(){if(sesDe(S.perfil,S.acceso).pend)return toast(`Ya tienes 
    <button class="btn primary go" id="cp-ok" onclick="comprarSesiones()">Comprar ${k.c} sesiones</button>
    <span class="small">Tus sesiones empiezan a contar cuando ${ENTRENA.corto} confirme el pago.</span></div>`)}
 async function comprarSesiones(){const k=S.compra,b=$('#cp-ok');if(!k)return;const c=Math.max(SES_MIN,Math.min(SES_MAX,Math.round(k.c)));if(b)b.disabled=true;
-  const id='p'+uid(),ref=(k.ref||'').trim().slice(0,40),precio=+(S.coachCfg?.monto)||0;let comp=null;
+  const id='p'+uid(),ref=(k.ref||'').trim().slice(0,40),precio=PRECIO_SESION;let comp=null;
   if(k.m==='sinpe'&&S.compraImg){let img;try{img=await comprimir(S.compraImg,1100,.72)}catch(e){if(b)b.disabled=false;return toast('No se pudo leer esa imagen. Prueba con otra captura.')}
     comp='c'+uid();const d={img,ref,monto:precio*c,fecha:Date.now(),estado:'pendiente',cant:c};
     if(!await escribir(async()=>{await S.db.doc(BASE()+'/comprobantes/'+comp).set(d);await S.db.doc(BASE()).update({compPend:{id:comp,fecha:d.fecha,monto:d.monto}})})){if(b)b.disabled=false;return}}
@@ -1320,7 +1319,7 @@ async function comprarSesiones(){const k=S.compra,b=$('#cp-ok');if(!k)return;con
 /* Coach: confirma o rechaza el pago; el uso solo lo ve */
 function cajaCompraPend(c){const s=sesCli(c),p=s.pend;if(!p)return'';
   return `<section class="card line" style="border-color:var(--gold);background:var(--gold-bg)"><div class="row between"><b>Compra por confirmar</b><span class="small">${fechaHora(p.t)}</span></div>
-   <span class="big" style="font-size:26px">${p.c} sesiones${S.coachCfg?.monto?' · '+colones(p.c*S.coachCfg.monto):''}</span>
+   <span class="big" style="font-size:26px">${p.c} sesiones${' · '+colones(p.c*PRECIO_SESION)}</span>
    <span class="small" style="color:var(--fg)">${esc(METODOS[p.m]||p.m)}${p.ref?' · ref. '+esc(p.ref):''}</span>
    ${p.comp?`<button class="btn ghost block" onclick="verComprobante(${J(c.id)},${J(p.comp)})">Ver comprobante</button>`:''}
    <div class="grid2"><button class="btn primary" onclick="aceptarCompra(${J(c.id)},${J(p.id)})">Aceptar pago</button><button class="btn danger" onclick="rechazarCompra(${J(c.id)},${J(p.id)},this)">Rechazar</button></div>
