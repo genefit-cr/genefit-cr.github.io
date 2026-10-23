@@ -175,6 +175,15 @@ body.tema-f{--accent:#FF6EB4;--ok-bg:#331020;--ok-line:#6E2249;--ok-fg:#EBB0CC;-
 .sug{font-size:13px;font-weight:600;padding:6px 10px;border-radius:10px;background:var(--raise);color:var(--muted)}
 .sug.sube{background:var(--ok-bg);color:var(--accent)}
 .aviso{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--warn);background:var(--warn-bg);border-radius:10px;padding:6px 6px 6px 10px}
+/* Animación 3D en la ficha */
+.v3d{position:relative;width:100%;aspect-ratio:1/1;max-height:64vh;background:radial-gradient(circle at 50% 38%,#2B3242 0%,#1A1D24 55%,var(--bg) 100%);touch-action:pan-y;overflow:hidden}
+.v3d canvas{display:block;width:100%!important;height:100%!important;opacity:0;transition:opacity .3s}
+.v3d.listo canvas{opacity:1}
+.v3d-hint{position:absolute;left:16px;bottom:14px;font-size:12px;font-weight:600;color:var(--muted);background:rgba(14,15,18,.6);padding:4px 8px;border-radius:8px;pointer-events:none}
+.v3d-pausa{position:absolute;right:max(16px,env(safe-area-inset-right,0px));bottom:10px;background:rgba(14,15,18,.7);border:0;color:var(--fg)}
+.vtog{position:absolute;right:max(16px,env(safe-area-inset-right,0px));top:calc(16px + env(safe-area-inset-top,0px));display:flex;gap:4px;background:rgba(14,15,18,.7);padding:4px;border-radius:999px}
+.vtog .chip{border:0;min-height:32px}
+@media (prefers-reduced-motion:reduce){.v3d canvas{transition:none}}
 /* Hojas y pantallas superpuestas */
 .sheet-bg{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center}
 .sheet{background:var(--card);width:100%;max-width:560px;max-height:88vh;border-radius:24px 24px 0 0;display:flex;flex-direction:column;padding:18px max(16px,env(safe-area-inset-right,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
@@ -729,9 +738,19 @@ function listaLib(cont){const el=$('#'+cont);if(!el)return;const q=S.libQ.trim()
 function abrirBiblioteca(cb,volviendo){S.pick=cb;if(!volviendo){S.libQ='';S.libG='Todos';S.libE='Todo equipo'}
   abrirHoja(`<div class="row between"><h2>Agregar ejercicio</h2><button class="iconbtn" onclick="cerrarHoja()" aria-label="Cerrar">${IC.x}</button></div><div class="stack s8" style="margin-top:10px">${libHead('q2')}</div><div class="body" id="libres2"></div>`);listaLib('libres2')}
 function elegir(n){const cb=S.pick;cerrarHoja();cerrarFicha();cb&&cb(n)}
-function abrirFicha(n,conAgregar){const e=info(n),f=$('#ficha');f.hidden=false;
-  f.innerHTML=`<div class="hero">${e&&e.s>=0?fotoHTML(n):'<div class="foto" style="aspect-ratio:3/1"></div>'}<div class="sombra"></div><button class="iconbtn volver" onclick="cerrarFicha()" aria-label="Volver">${IC.back}</button>${e&&e.s>=0?'<span class="lbl">Inicio ⇄ final</span>':''}</div>
-   <div class="ficha-body"><div class="stack s8"><h1 style="font-size:32px">${esc(n)}</h1><div class="chips">${e?`<span class="tag">${esc(e.g)}</span><span class="tag">${esc(e.eq)}</span><span class="tag">${esc(e.lv)}</span>`:'<span class="tag">Ejercicio personalizado</span>'}</div></div>
+/* Animación 3D del ejercicio (anim3d.js se descarga solo al abrir una ficha). Si el teléfono no puede, se muestran las fotos. */
+let A3D=null;
+const PAUSA='<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
+function montar3d(n){const el=$('#v3d'),e=info(n);if(!el||!e)return;
+  import('./anim3d.js').then(m=>{if(!el.isConnected)return;
+    A3D=m.montar(el,{id:e.id,g:e.g,eq:e.eq,mus:e.mus},{sexo:S.perfil?.sexo||ls.get('gf-tema','m'),metal:'#c9ced6',disco:'#2b2f37',banco:'#3a3f48',suelo:'#2A2F38'});
+    el.classList.add('listo')}).catch(x=>{console.warn('3D',x);if(el.isConnected){S.fichaVista='fotos';abrirFicha(...S.fichaArgs)}})}
+function pausa3d(b){if(!A3D)return;const sigue=A3D.alternar();b.innerHTML=sigue?PAUSA:IC.play;b.setAttribute('aria-label',sigue?'Pausar animación':'Reproducir animación')}
+function abrirFicha(n,conAgregar){const e=info(n),f=$('#ficha');f.hidden=false;S.fichaArgs=[n,conAgregar];
+  const fotos=e&&e.s>=0,ver3d=!!e&&S.fichaVista!=='fotos';
+  f.innerHTML=`<div class="hero">${ver3d?`<div class="v3d" id="v3d" role="img" aria-label="Animación 3D de ${esc(n)}"><span class="v3d-hint">Arrastra para girar</span><button class="iconbtn v3d-pausa" onclick="pausa3d(this)" aria-label="Pausar animación">${PAUSA}</button></div>`:fotos?fotoHTML(n):'<div class="foto" style="aspect-ratio:3/1"></div>'}${ver3d?'':'<div class="sombra"></div>'}<button class="iconbtn volver" onclick="cerrarFicha()" aria-label="Volver">${IC.back}</button>
+   ${e&&fotos?`<div class="vtog" role="group" aria-label="Ver como"><button class="chip sm" aria-pressed="${ver3d}" onclick="S.fichaVista='3d';abrirFicha(...S.fichaArgs)">3D</button><button class="chip sm" aria-pressed="${!ver3d}" onclick="S.fichaVista='fotos';abrirFicha(...S.fichaArgs)">Fotos</button></div>`:''}</div>
+   <div class="ficha-body" ${ver3d?'style="margin-top:14px"':''}><div class="stack s8"><h1 style="font-size:32px">${esc(n)}</h1><div class="chips">${e?`<span class="tag">${esc(e.g)}</span><span class="tag">${esc(e.eq)}</span><span class="tag">${esc(e.lv)}</span>`:'<span class="tag">Ejercicio personalizado</span>'}</div></div>
    ${e&&e.mus.length?`<div class="card"><div class="row" style="align-items:center;gap:16px;flex-wrap:wrap"><div style="flex:1 1 200px;min-width:0">${mapaMusculos(e.mus)}</div><div class="stack s8" style="flex:1 1 140px">
       <div><div class="eyebrow">Principal</div><div style="font-weight:700"><i class="leg" style="background:var(--m-pri)"></i>${esc(e.mus[0])}</div></div>
       ${e.mus.length>1?`<div><div class="eyebrow">Secundarios</div><div style="font-weight:600"><i class="leg" style="background:var(--m-sec)"></i>${esc(e.mus.slice(1).join(', '))}</div></div>`:''}</div></div></div>`:''}
@@ -739,8 +758,8 @@ function abrirFicha(n,conAgregar){const e=info(n),f=$('#ficha');f.hidden=false;
    ${conAgregar&&S.pick?`<button class="btn primary go" onclick="elegir(${J(n)})">Agregar ejercicio</button>`:''}
    ${!S.pick&&S.modo==='cliente'&&S.vista!=='ej'&&sesionesDe(S.hist,n).length?`<button class="btn primary block" onclick="cerrarFicha();abrirEj(${J(n)})">${IC.prog} Ver mi progreso en este ejercicio</button>`:''}
    <button class="btn ghost block" onclick="cerrarFicha()">Volver</button></div>`;
-  f.scrollTop=0;if(e)cargarPasos(e)}
-function cerrarFicha(){const f=$('#ficha');f.hidden=true;f.innerHTML=''}
+  f.scrollTop=0;if(e)cargarPasos(e);if(ver3d)montar3d(n)}
+function cerrarFicha(){const f=$('#ficha');f.hidden=true;f.innerHTML='';try{A3D?.destruir()}catch(e){}A3D=null}
 function abrirHoja(html){const s=$('#sheet');s.hidden=false;s.innerHTML=`<div class="sheet-bg" onclick="if(event.target===this)cerrarHoja()"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`}
 function cerrarHoja(){cortar('ranking');const s=$('#sheet');s.hidden=true;s.innerHTML='';S.pick=null;S.asg=null;if(pendiente&&!enfocado()){pendiente=false;render()}}
 
