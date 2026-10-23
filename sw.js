@@ -3,7 +3,7 @@
      si no hay señal, se usa la copia guardada.
    - Librerías, letras y fotos de ejercicios se guardan la primera vez.
    - Los datos de Firebase NO pasan por aquí: Firebase tiene su propio modo sin señal. */
-const VERSION = 'gf-v7';
+const VERSION = 'gf-v8';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/genesis-retrato.jpg', './icons/genesis-afiche.jpg',
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js',
@@ -28,9 +28,9 @@ self.addEventListener('fetch', e => {
   const r = e.request;
   if (r.method !== 'GET') return;
   const url = new URL(r.url);
-  // Página: primero internet, si no, la copia.
+  // Página: primero internet (preguntando siempre si hay versión nueva), si no, la copia.
   if (r.mode === 'navigate') {
-    e.respondWith(fetch(r).then(res => {
+    e.respondWith(fetch(r.url, { cache: 'no-cache', credentials: 'same-origin' }).then(res => {
       if (res.ok) { const copia = res.clone(); caches.open(VERSION).then(c => c.put('./index.html', copia)); }
       return res;
     }).catch(() => caches.match('./index.html', { ignoreSearch: true })));
