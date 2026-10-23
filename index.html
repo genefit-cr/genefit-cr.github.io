@@ -185,6 +185,7 @@ body.tema-f{--accent:#FF6EB4;--ok-bg:#331020;--ok-line:#6E2249;--ok-fg:#EBB0CC;-
 .vtog .chip{border:0;min-height:32px}
 @media (prefers-reduced-motion:reduce){.v3d canvas{transition:none}}
 /* Foto de la entrenadora */
+.btn.wa{background:#25D366;color:#0B2A15}
 .afiche{width:100%;height:auto;aspect-ratio:900/898;border-radius:20px;display:block;background:var(--card)}
 .fcoach{object-fit:cover;object-position:50% 12%;flex:none;background:var(--raise);border-radius:14px}
 .saludo{border-color:var(--accent);background:linear-gradient(160deg,var(--ok-bg),var(--card) 70%)}
@@ -329,6 +330,7 @@ const IC={
   arriba:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>',
   pago:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h3"/></svg>',
   huella:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6.5 7.5a7 7 0 0 1 11 0"/><path d="M5 12a7 7 0 0 1 14 0v1"/><path d="M8.5 20c-.6-1.6-1-3.8-1-6a4.5 4.5 0 0 1 9 0c0 1 0 2-.2 3"/><path d="M12 13.5c0 2.8.4 5 1.2 7"/><path d="M16.2 19.5c.3-.8.5-1.7.6-2.6"/></svg>',
+  wa:'<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.6.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7.5-.1 1.5-.6 1.7-1.2s.2-1.1.2-1.2-.2-.2-.5-.3z"/></svg>',
   dots:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
   cam:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>'
 };
@@ -542,7 +544,20 @@ async function salir(){if(S.ses&&!confirmSalir){confirmSalir=true;return toast('
   try{sessionStorage.removeItem('gf-desbloq')}catch(e){}
   location.reload()}
 let confirmSalir=false;
-function vLogin(){const r=S.authModo==='crear',o=S.authModo==='olvido';
+/* WhatsApp de Génesis (Costa Rica +506) */
+const WHATSAPP='50660252568';
+const enlaceWA=t=>`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(t)}`;
+function vEnviado(){const m=S.correoEnviado||'';
+  return `<div class="stack auth" style="padding-top:36px">
+   <span class="marca"><i><svg viewBox="0 0 24 24" fill="none" stroke="#0E0F12" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6v12M18 6v12M3 9v6M21 9v6M6 12h12"/></svg></i>GENEFIT</span>
+   <h1 style="font-size:40px;line-height:1">Revisa tu correo</h1>
+   <p class="small" style="font-size:16px">Si <b style="color:var(--fg)">${esc(m)}</b> tiene cuenta en Genefit, te llegó un enlace para crear una clave nueva.</p>
+   <div class="notice" style="color:var(--fg)">Revisa también la carpeta de <b>spam</b> o <b>promociones</b>. El correo llega de <b>noreply@genefit-1a52a.firebaseapp.com</b>.</div>
+   <section class="card line"><div class="row" style="gap:12px">${fotoCoach(48)}<div class="grow"><b>¿No te llegó?</b><div class="small">Escríbele a ${ENTRENA.corto} y te ayuda.</div></div></div>
+    <a class="btn primary block wa" href="${enlaceWA(`Hola ${ENTRENA.corto}, olvidé mi clave de Genefit y no me llega el correo. Mi correo es ${m}`)}" target="_blank" rel="noopener">${IC.wa} Escribir por WhatsApp</a></section>
+   <button class="btn ghost block" onclick="S.authModo='entrar';render()">Volver a entrar</button>
+   <button class="link" onclick="S.authModo='olvido';render()">Enviar el correo otra vez</button></div>`}
+function vLogin(){if(S.authModo==='enviado')return vEnviado();const r=S.authModo==='crear',o=S.authModo==='olvido';
   return `<form class="stack auth" style="padding-top:36px" onsubmit="enviarAuth(event)">
    <span class="marca"><i><svg viewBox="0 0 24 24" fill="none" stroke="#0E0F12" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6v12M18 6v12M3 9v6M21 9v6M6 12h12"/></svg></i>GENEFIT</span>
    ${r||o?`<div class="row" style="gap:14px">${fotoCoach(64)}<div><div style="font-family:var(--display);font-weight:900;font-size:20px">${ENTRENA.nombre}</div><span class="eyebrow ac">${ENTRENA.titulo}</span></div></div>`
@@ -554,12 +569,12 @@ function vLogin(){const r=S.authModo==='crear',o=S.authModo==='olvido';
    ${o?'':`<div class="field"><label class="lbl" for="aclave">Clave</label><input class="input" id="aclave" type="password" required minlength="${r?8:6}" autocomplete="${r?'new-password':'current-password'}" placeholder="${r?'Mínimo 8 caracteres':'Tu clave'}"></div>`}
    <div class="err" id="aerr" role="alert"></div>
    <button class="btn primary go" id="abtn">${o?'Enviar correo':r?'Crear cuenta':'Entrar'}</button>
-   ${o?`<button type="button" class="link" onclick="S.authModo='entrar';render()">Volver a entrar</button>`:
+   ${o?`<button type="button" class="link" onclick="S.authModo='entrar';render()">Volver a entrar</button><a class="link" style="text-align:center;text-decoration:none" href="${enlaceWA(`Hola ${ENTRENA.corto}, olvidé mi clave de Genefit.`)}" target="_blank" rel="noopener">¿Problemas? Escríbele a ${ENTRENA.corto} por WhatsApp</a>`:
      `<button type="button" class="btn ghost block" onclick="S.authModo='${r?'entrar':'crear'}';render()">${r?'Ya tengo cuenta: entrar':'Soy nuevo: crear cuenta'}</button>${r?'':`<button type="button" class="link" onclick="S.authModo='olvido';render()">Olvidé mi clave</button>`}`}
   </form>`}
 const ERR_AUTH={'auth/invalid-credential':'Correo o clave incorrectos.','auth/wrong-password':'Clave incorrecta.','auth/user-not-found':'No hay una cuenta con ese correo. Toca «Soy nuevo».','auth/email-already-in-use':'Ya existe una cuenta con ese correo. Toca «Ya tengo cuenta».','auth/weak-password':'La clave debe tener al menos 6 caracteres.','auth/invalid-email':'Ese correo no es válido.','auth/too-many-requests':'Demasiados intentos. Espera un rato e inténtalo de nuevo.','auth/network-request-failed':'Sin conexión. Revisa tu internet.','auth/operation-not-allowed':'Falta activar «Correo electrónico/contraseña» en Firebase Authentication.'};
 async function enviarAuth(ev){ev.preventDefault();const m=$('#amail').value.trim(),c=$('#aclave')?.value,b=$('#abtn'),er=$('#aerr');er.textContent='';b.disabled=true;
-  try{if(S.authModo==='olvido'){await S.auth.sendPasswordResetEmail(m);toast('Te enviamos un correo para cambiar la clave');S.authModo='entrar';render();return}
+  try{if(S.authModo==='olvido'){await S.auth.sendPasswordResetEmail(m);S.correoEnviado=m;S.authModo='enviado';render();return}
     if(S.authModo==='crear'){const nom=$('#anom').value.trim();if(!S.sexoNuevo){er.textContent='Elige hombre o mujer.';b.disabled=false;return}if(c.length<8||/^(\d+|(.)\2+)$/.test(c)){er.textContent='Usa una clave de al menos 8 caracteres que no sea solo números ni una letra repetida.';b.disabled=false;return}const r=await S.auth.createUserWithEmailAndPassword(m,c);await r.user.updateProfile({displayName:nom});S.meName=nom}
     else await S.auth.signInWithEmailAndPassword(m,c)}
   catch(e){er.textContent=ERR_AUTH[e.code]||('No se pudo: '+(e.code||e.message));b.disabled=false}}
@@ -593,7 +608,7 @@ function vHoy(){
   const hoy=new Date(),L=lunes(Date.now()),hechos=new Set(S.hist.map(h=>new Date(h.fecha).toDateString()));
   const nom=S.perfil?.alias||S.meName||'';
   let h=`<div class="stack" style="padding-top:12px"><div><span class="small">${esc(hoy.toLocaleDateString('es-CR',{weekday:'long',day:'numeric',month:'long'}))}</span><h1>Hola${nom?', '+esc(nom.split(' ')[0]):''}</h1></div>`;
-  h+=tarjetaSaludo()+tarjetaSexo()+tarjetaHuella()+bannerInstalar();
+  h+=tarjetaSaludo()+tarjetaSesiones()+tarjetaSexo()+tarjetaHuella()+bannerInstalar();
   {const pa=pago(S.acceso);if(['pronto','venc'].includes(pa.k)||S.comp?.[0]?.estado==='pendiente')h+=tarjetaSinpe()}
   h+=`<div class="semana" aria-label="Esta semana">${LETRAS.map((l,i)=>{const t=new Date(L+i*DIA);const c=hechos.has(t.toDateString())?'hecho':(i===hoyDow()?'hoy':'');return `<div class="dia ${c}"><span class="tiny">${l}</span><b>${t.getDate()}</b></div>`}).join('')}</div>`;
   if(S.ses){const all=S.ses.ejercicios.flatMap(e=>e.sets);h+=`<div class="card line" style="border-color:var(--ok-line);background:var(--ok-bg)"><span class="eyebrow ac">En curso</span><h2>${esc(S.ses.rutina)}</h2><span class="small" style="color:var(--ok-fg)">${all.filter(x=>x.ok).length} de ${all.length} series · empezaste ${hace(S.ses.inicio)}</span><button class="btn primary go" onclick="abrirSesion()">${IC.play} Continuar</button></div>`}
@@ -1104,11 +1119,11 @@ async function revisarComp(cid){const c=S.clientes.find(x=>x.id===cid),p=c?.comp
    <div class="body"><img src="${esc(d.img)}" alt="Comprobante de SINPE" style="width:100%;border-radius:12px;background:#fff">
    <div class="grid2"><div class="tile" style="background:var(--raise)"><span class="tiny">Monto esperado</span><b>${d.monto?colones(d.monto):'—'}</b></div><div class="tile" style="background:var(--raise)"><span class="tiny">Referencia</span><b style="word-break:break-all">${esc(d.ref||'—')}</b></div></div>
    <span class="small">Confírmalo en tu banco antes de aprobar. Enviado ${hace(d.fecha)}.</span>
-   <button class="btn primary go" onclick="aprobarComp(${J(cid)},${J(p.id)})">Aprobar: al día hasta el ${fecha(ph)}</button>
+   <button class="btn primary go" onclick="aprobarComp(${J(cid)},${J(p.id)})">${esSesion(a)?'Aprobar y agregar sesiones':'Aprobar: al día hasta el '+fecha(ph)}</button>
    <button class="btn danger block" onclick="rechazarComp(${J(cid)},${J(p.id)},this)">Rechazar</button></div>`)}
 async function aprobarComp(cid,id){const del=firebase.firestore.FieldValue.delete();
   const ok=await escribir(async()=>{await S.db.doc(`clientes/${cid}/comprobantes/${id}`).update({estado:'aprobado',revisado:Date.now()});await S.db.doc('clientes/'+cid).update({compPend:del})});
-  if(ok){cerrarHoja();await registrarPago(cid)}}
+  if(ok){cerrarHoja();if(esSesion(accesoDe(cid)))abrirPaquete(cid);else await registrarPago(cid)}}
 async function rechazarComp(cid,id,b){if(!b.dataset.ok){b.dataset.ok=1;b.textContent='Toca otra vez para rechazar';return}const del=firebase.firestore.FieldValue.delete();
   const m={de:S.me,texto:'No pude confirmar tu comprobante de SINPE. ¿Me lo envías de nuevo o me confirmas la referencia?',fecha:Date.now()};
   if(await escribir(async()=>{await S.db.doc(`clientes/${cid}/comprobantes/${id}`).update({estado:'rechazado',revisado:Date.now()});await S.db.doc('clientes/'+cid).update({compPend:del,ultMsg:m});await S.db.collection('clientes/'+cid+'/mensajes').doc('m'+uid()).set(m)},'Comprobante rechazado. Le avisamos por el chat.'))cerrarHoja()}
@@ -1256,6 +1271,55 @@ function tarjetaHuella(){if(!HUELLA_OK||huella()||ls.get('gf-huella-no',false))r
 function ajusteHuella(){if(!HUELLA_OK)return'';const on=!!huella();
   return `<section class="card"><div class="row between"><b>Entrar con huella o cara</b><button class="switch" role="switch" aria-checked="${on}" aria-label="Entrar con huella" onclick="${on?'quitarHuella()':'activarHuella()'}"><i></i></button></div><span class="small">${on?'Al abrir Genefit te pedimos la huella o la cara.':'Al abrir Genefit te pedimos la clave solo si cerraste sesión.'} Tu huella nunca sale del teléfono.</span></section>`}
 
+/* ================= Clientes por sesión: contador con fecha y hora ================= */
+/* Se guarda en acceso/{cliente} (solo el coach lo escribe, el cliente lo lee):
+   plan:'sesion', sesCompradas (total comprado), sesLog [{id,t,n}] (cada sesión), sesPaq [{t,c}] (paquetes) */
+const esSesion=a=>a?.plan==='sesion';
+const sesInfo=a=>{const comp=a?.sesCompradas||0,log=[...(a?.sesLog||[])].sort((x,y)=>y.t-x.t);return{comp,us:log.length,rest:comp-log.length,log,paq:[...(a?.sesPaq||[])].sort((x,y)=>y.t-x.t)}};
+const fechaHora=t=>new Date(t).toLocaleString('es-CR',{weekday:'short',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});
+const planChips=(cid,actual)=>`<div class="chips" role="radiogroup" aria-label="Plan">${[['mes','Mensualidad'],['sesion','Por sesiones']].map(([k,l])=>`<button class="chip sm" role="radio" aria-checked="${actual===k}" aria-pressed="${actual===k}" onclick="cambiarPlan(${J(cid)},'${k}')">${l}</button>`).join('')}</div>`;
+async function cambiarPlan(cid,plan){await escribir(()=>S.db.doc('acceso/'+cid).set({plan,alias:aliasDe(cid)},{merge:true}),plan==='sesion'?'Plan por sesiones':'Plan de mensualidad')}
+function cardSesiones(cid,n){const a=accesoDe(cid),s=sesInfo(a),p=pago(a);
+  return `<section class="card"><div class="row between"><b>Plan</b><span class="pill ${p.cls}">${p.t}</span></div>${planChips(cid,'sesion')}
+   <div class="row" style="align-items:baseline;gap:8px"><span class="big num" style="font-size:44px;${s.rest<0?'color:var(--danger)':''}">${s.rest<0?'−'+(-s.rest):s.rest}</span><span class="small">${s.rest<0?'sesiones sin pagar':'de '+s.comp+' restantes'} · ${s.us} usada${s.us===1?'':'s'}</span></div>
+   <div class="prog"><i style="width:${s.comp?Math.min(100,s.us/s.comp*100):0}%"></i></div>
+   ${s.log[0]?`<span class="small">Última sesión: <b style="color:var(--fg)">${fechaHora(s.log[0].t)}</b></span>`:''}
+   <div class="grid2"><button class="btn primary" onclick="registrarSesion(${J(cid)})">Registrar sesión ahora</button><button class="btn ghost" onclick="abrirSesionFecha(${J(cid)})">Otra fecha u hora</button></div>
+   <button class="btn ghost block" onclick="abrirPaquete(${J(cid)})">+ Agregar paquete de sesiones</button>
+   ${s.log.length?`<details><summary style="font-weight:700;cursor:pointer;padding:6px 0">Historial de sesiones (${s.us})</summary>${s.log.map((x,k)=>`<div class="list-row"><span class="grow"><b class="num">#${s.us-k}</b> · ${fechaHora(x.t)}${x.n?`<span class="small" style="display:block">${esc(x.n)}</span>`:''}</span><button class="iconbtn" onclick="borrarSesionReg(${J(cid)},${J(x.id)},this)" aria-label="Borrar la sesión del ${fechaHora(x.t)}">${IC.x}</button></div>`).join('')}</details>`:''}
+   ${s.paq.length?`<details><summary style="font-weight:700;cursor:pointer;padding:6px 0">Paquetes (${s.paq.length})</summary>${s.paq.map(x=>`<div class="list-row"><span class="grow">${x.c} sesi${x.c===1?'ón':'ones'}${x.n?` · ${esc(x.n)}`:''}</span><span class="small">${fecha(x.t)}</span></div>`).join('')}</details>`:''}
+   ${a?.bloqueado?`<button class="btn ghost block" onclick="suspender(${J(cid)},false)">Reactivar acceso</button>`:`<button class="btn danger block" onclick="suspender(${J(cid)},true,this)">Suspender acceso ya</button>`}
+   <span class="small">${esc(n)} ve en su perfil cuántas sesiones le quedan y la fecha y hora de cada una.</span></section>`}
+async function guardarSesionesDe(cid,cambio,msg){const a=accesoDe(cid)||{};
+  return escribir(()=>S.db.doc('acceso/'+cid).set({plan:'sesion',alias:aliasDe(cid),...cambio(a)},{merge:true}),msg)}
+async function registrarSesion(cid,t=Date.now(),n=''){const s=sesInfo(accesoDe(cid));
+  const ok=await guardarSesionesDe(cid,a=>({sesLog:[...(a.sesLog||[]),{id:uid(),t,...(n?{n:n.slice(0,80)}:{})}]}),`Sesión registrada: ${fechaHora(t)}${s.rest-1<0?' · queda debiendo':''}`);
+  if(ok)cerrarHoja()}
+function abrirSesionFecha(cid){const d=new Date(),iso=new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);
+  abrirHoja(`<div class="row between"><h2>Registrar sesión</h2><button class="iconbtn" onclick="cerrarHoja()" aria-label="Cerrar">${IC.x}</button></div>
+   <div class="body"><div class="field"><label class="lbl" for="sf-t">Fecha y hora</label><input class="input" id="sf-t" type="datetime-local" value="${iso}"></div>
+   <div class="field"><label class="lbl" for="sf-n">Nota (opcional)</label><input class="input" id="sf-n" maxlength="80" placeholder="Ej: pierna, evaluación corporal"></div>
+   <button class="btn primary go" onclick="const v=$('#sf-t').value;if(!v)return toast('Elige la fecha y hora');registrarSesion(${J(cid)},new Date(v).getTime(),$('#sf-n').value.trim())">Registrar sesión</button></div>`)}
+function abrirPaquete(cid){S.paqC=10;
+  abrirHoja(`<div class="row between"><h2>Agregar sesiones</h2><button class="iconbtn" onclick="cerrarHoja()" aria-label="Cerrar">${IC.x}</button></div>
+   <div class="body"><span class="lbl">¿Cuántas sesiones compró?</span><div class="chips" id="pq-c">${[1,4,5,8,10,12,20].map(c=>`<button class="chip" aria-pressed="${c===10}" onclick="S.paqC=${c};$('#pq-n').value=${c};document.querySelectorAll('#pq-c .chip').forEach(b=>b.setAttribute('aria-pressed',b===this))">${c}</button>`).join('')}</div>
+   <div class="grid2"><div class="field"><label class="lbl" for="pq-n">Cantidad</label><input class="input num" id="pq-n" type="number" inputmode="numeric" min="1" max="200" value="10"></div>
+    <div class="field"><label class="lbl" for="pq-nota">Nota (opcional)</label><input class="input" id="pq-nota" maxlength="60" placeholder="Ej: pagó por SINPE"></div></div>
+   <button class="btn primary go" onclick="agregarPaquete(${J(cid)})">Agregar sesiones</button></div>`)}
+async function agregarPaquete(cid){const c=Math.round(+$('#pq-n').value||0);if(c<1||c>200)return toast('Escribe una cantidad entre 1 y 200');const nota=($('#pq-nota')?.value||'').trim().slice(0,60);
+  if(await guardarSesionesDe(cid,a=>({sesCompradas:(a.sesCompradas||0)+c,sesPaq:[...(a.sesPaq||[]),{t:Date.now(),c,...(nota?{n:nota}:{})}],bloqueado:false}),`${c} sesi${c===1?'ón agregada':'ones agregadas'}`))cerrarHoja()}
+async function borrarSesionReg(cid,id,b){if(!b.dataset.ok){b.dataset.ok=1;b.style.color='var(--danger)';toast('Toca otra vez la ✕ para borrar esa sesión');return}
+  await guardarSesionesDe(cid,a=>({sesLog:(a.sesLog||[]).filter(x=>x.id!==id)}),'Sesión borrada')}
+/* Lo que ve el cliente en su perfil */
+function tarjetaSesiones(){const a=S.acceso;if(S.esOwner||!esSesion(a))return'';const s=sesInfo(a);
+  return `<section class="card line" ${s.rest<=0?'style="border-color:var(--warn)"':''}><div class="row between"><b>Tus sesiones con ${ENTRENA.corto}</b><span class="small">${s.us} hecha${s.us===1?'':'s'}</span></div>
+   <div class="row" style="align-items:baseline;gap:8px"><span class="big num" style="font-size:44px">${Math.max(0,s.rest)}</span><span class="small">${s.rest>0?`de ${s.comp} te quedan`:'te quedan'}</span></div>
+   <div class="prog"><i style="width:${s.comp?Math.min(100,s.us/s.comp*100):0}%"></i></div>
+   ${s.log[0]?`<span class="small">Última: <b style="color:var(--fg)">${fechaHora(s.log[0].t)}</b></span>`:''}
+   ${s.rest<=0?`<div class="notice" style="color:var(--fg)">${s.rest<0?`Tienes ${-s.rest} sesi${s.rest===-1?'ón':'ones'} pendiente${s.rest===-1?'':'s'} de pago.`:'Se te acabaron las sesiones.'} Coordina tu próximo paquete con ${ENTRENA.corto}.</div>
+     <a class="btn block wa" href="${enlaceWA(`Hola ${ENTRENA.corto}, quiero comprar más sesiones.`)}" target="_blank" rel="noopener">${IC.wa} Escribir por WhatsApp</a>`:''}
+   ${s.log.length?`<details><summary style="font-weight:700;cursor:pointer;padding:6px 0;color:var(--accent)">Ver todas mis sesiones</summary>${s.log.map((x,k)=>`<div class="list-row"><span class="grow"><b class="num">#${s.us-k}</b> · ${fechaHora(x.t)}${x.n?`<span class="small" style="display:block">${esc(x.n)}</span>`:''}</span></div>`).join('')}</details>`:''}</section>`}
+
 /* ================= Chat (cliente y coach) ================= */
 function marcarVisto(cid){const v=ls.get('gf-visto',{});v[cid]=Date.now();ls.set('gf-visto',v)}
 function hiloHTML(lista){return lista.length?`<div class="msgs" id="msgs">${lista.map(m=>`<div class="msg ${m.de===S.me?'yo':'otro'}">${esc(m.texto)}<small>${hace(m.fecha)}</small></div>`).join('')}</div>`:'<div class="empty">Todavía no hay mensajes. Escribe el primero.</div>'}
@@ -1269,7 +1333,7 @@ function vCoach(){
   marcarVisto(S.me);const nom=S.coachNombre||'Génesis';
   return `<div class="stack" style="padding-top:12px"><div class="row" style="align-items:flex-end">${fotoCoach(96)}<div class="grow"><span class="small">Tu entrenadora · ${ENTRENA.titulo}</span><h1 style="font-size:26px">${esc(S.coachNombre||ENTRENA.nombre)}</h1></div></div>
    ${S.asig.length?`<section class="card"><b>Rutinas que te asignó</b>${S.asig.map(a=>`<div class="list-row"><div class="grow"><b>${esc(a.nombre)}</b><div class="small">${(a.ejercicios||[]).length} ejercicios${a.dias?.length?' · '+a.dias.map(d=>NOMDIA[d]).join(', '):''}</div></div>${S.ses?'':`<button class="btn sm primary" onclick="iniciar('asig',${J(a.id)})">Empezar</button>`}</div>`).join('')}</section>`:''}
-   ${tarjetaSinpe()}${tarjetaRetos()}
+   ${tarjetaSesiones()}${tarjetaSinpe()}${tarjetaRetos()}
    <section class="card"><b>Mensajes</b>${hiloHTML(S.msgs)}${cajaMsg(S.me)}</section></div>`}
 
 /* Resumen que la app del cliente calcula al guardar un entreno, para que el coach vea tendencias
@@ -1363,6 +1427,8 @@ async function desasignar(cid,aid,b){if(!b.dataset.ok){b.dataset.ok=1;b.style.co
 const accesoDe=id=>S.accesos.find(a=>a.id===id);
 function pago(a){
   if(a?.bloqueado)return{k:'susp',t:a.eliminado?'Eliminado':'Suspendido',cls:'mal'};
+  if(esSesion(a)){const s=sesInfo(a);if(s.rest<0)return{k:'venc',t:`Debe ${-s.rest}`,cls:'mal'};if(s.rest===0)return{k:'venc',t:s.comp?'Sin sesiones':'Sin paquete',cls:'mal'};
+    if(s.rest<=2)return{k:'pronto',t:`Quedan ${s.rest}`,cls:'alerta'};return{k:'ok',t:`${s.rest} sesiones`,cls:'ok'}}
   if(!a?.pagoHasta)return{k:'sin',t:'Sin pago',cls:'nada'};
   if(a.pagoHasta<Date.now())return{k:'venc',t:'Vencido',cls:'mal'};
   const d=Math.ceil((a.pagoHasta-Date.now())/DIA);
@@ -1371,7 +1437,7 @@ function pago(a){
 function pillPago(cid){if(cid===S.me)return'';const p=pago(accesoDe(cid));return p.k==='ok'?'':`<span class="pill ${p.cls}">${p.t}</span>`}
 function restringido(){const a=S.acceso;if(S.esOwner||!a)return null;
   if(a.bloqueado)return a.eliminado?'eliminado':'suspendido';
-  if(a.pagoHasta&&a.pagoHasta<Date.now())return'vencido';return null}
+  if(!esSesion(a)&&a.pagoHasta&&a.pagoHasta<Date.now())return'vencido';return null}
 function vBloqueado(){const r=restringido(),a=S.acceso||{},nom=S.coachNombre||'Génesis';
   const tit={vencido:'Tu mensualidad venció',suspendido:'Tu acceso está en pausa',eliminado:'Tu cuenta está desactivada'}[r];
   const txt={vencido:`Tu plan estaba pagado hasta el ${fechaLarga(a.pagoHasta)}. En cuanto ${esc(nom)} registre tu pago, vuelves a ver tus rutinas y tu progreso.`,
@@ -1384,7 +1450,8 @@ function vBloqueado(){const r=restringido(),a=S.acceso||{},nom=S.coachNombre||'G
 function cardPago(cid,n){const a=accesoDe(cid),p=pago(a),cc=S.clientes.find(x=>x.id===cid);
   const pend=cc?.compPend?`<div class="card line" style="border-color:var(--accent);flex-direction:row;align-items:center;padding:12px"><div class="grow"><b>Comprobante de SINPE por revisar</b><div class="small">${cc.compPend.monto?colones(cc.compPend.monto)+' · ':''}${hace(cc.compPend.fecha)}</div></div><button class="btn sm primary" onclick="revisarComp(${J(cid)})">Revisar</button></div>`:'';
   if(S.sinReglasAcceso)return `<section class="card line" style="border-color:var(--warn)"><b>Mensualidad</b><span class="small">Para cobrar mensualidades falta pegar las reglas nuevas de Firestore en la consola de Firebase.</span></section>`;
-  return pend+`<section class="card"><div class="row between"><b>Mensualidad</b><span class="pill ${p.cls}">${p.t}</span></div>
+  if(esSesion(a))return pend+cardSesiones(cid,n);
+  return pend+`<section class="card"><div class="row between"><b>Mensualidad</b><span class="pill ${p.cls}">${p.t}</span></div>${planChips(cid,'mes')}
    <span class="small">${a?.pagoHasta?`Pagado hasta el <b style="color:var(--fg)">${fechaLarga(a.pagoHasta)}</b>`:'Todavía no le registras ningún pago. Mientras tanto tiene acceso libre.'}${a?.ultPago?` · último pago registrado ${hace(a.ultPago)}`:''}</span>
    <div class="grid2"><button class="btn primary" onclick="registrarPago(${J(cid)})">Pagó: +1 mes</button><button class="btn ghost" onclick="abrirFecha(${J(cid)})">Cambiar fecha</button></div>
    ${a?.bloqueado?`<button class="btn ghost block" onclick="suspender(${J(cid)},false)">Reactivar acceso</button>`:`<button class="btn danger block" onclick="suspender(${J(cid)},true,this)">Suspender acceso ya</button>`}
@@ -1415,6 +1482,8 @@ async function eliminarCliente(cid,b){if(!b.dataset.ok){b.dataset.ok=1;b.textCon
     await S.db.doc('clientes/'+cid).delete()},`${alias} fue eliminado`);
   if(ok)cerrarCliente();else{b.disabled=false;b.textContent='Eliminar cliente'}}
 function filaPago(cid,n){const a=accesoDe(cid),p=pago(a);
+  if(esSesion(a)&&!a.bloqueado){const s=sesInfo(a);return `<div class="card" style="padding:12px;gap:10px"><div class="row">${avatar(n)}<div class="grow" style="min-width:0"><b style="display:block">${esc(n)}</b><span class="small">Por sesiones · ${s.us} de ${s.comp} usadas${s.log[0]?' · última '+fecha(s.log[0].t):''}</span></div><span class="pill ${p.cls}">${p.t}</span></div>
+   <div class="grid2"><button class="btn primary sm" onclick="registrarSesion(${J(cid)})">+ Sesión ahora</button><button class="btn ghost sm" onclick="abrirPaquete(${J(cid)})">Paquete</button></div></div>`}
   return `<div class="card" style="padding:12px;gap:10px"><div class="row">${avatar(n)}<div class="grow" style="min-width:0"><b style="display:block">${esc(n)}</b><span class="small">${a?.pagoHasta?(p.k==='venc'?'Venció el ':'Hasta el ')+fecha(a.pagoHasta):'Sin pago registrado'}</span></div><span class="pill ${p.cls}">${p.t}</span></div>
    ${a?.bloqueado?`<button class="btn ghost sm" onclick="suspender(${J(cid)},false)">Reactivar</button>`:`<div class="grid2"><button class="btn primary sm" onclick="registrarPago(${J(cid)})">+1 mes</button><button class="btn ghost sm" onclick="abrirFecha(${J(cid)})">Fecha</button></div>`}</div>`}
 function vPagos(){const C=S.clientes.filter(c=>c.id!==S.me).map(c=>({id:c.id,n:nombreCliente(c),p:pago(accesoDe(c.id)),a:accesoDe(c.id)}));

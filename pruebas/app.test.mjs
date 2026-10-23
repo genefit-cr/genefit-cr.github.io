@@ -297,6 +297,33 @@ try {
   await ver(C, 'Ana Pérez');
   await C.evaluate(() => cerrarHoja());
 
+  // Clientes por sesión: paquete, sesiones con fecha y hora, lo que ve el cliente
+  await C.evaluate(() => { const c = S.clientes.find(x => x.alias === 'Ana Pérez'); window.__ana = c.id; abrirCliente(c.id); });
+  await C.getByRole('radio', { name: 'Por sesiones' }).click();
+  await ver(C, 'Agregar paquete de sesiones');
+  await C.getByRole('button', { name: '+ Agregar paquete de sesiones' }).click();
+  await C.getByRole('button', { name: 'Agregar sesiones' }).click();
+  await ver(C, 'de 10 restantes');
+  await C.getByRole('button', { name: 'Registrar sesión ahora' }).click();
+  await C.getByRole('button', { name: 'Otra fecha u hora' }).click();
+  await C.fill('#sf-t', '2026-10-20T18:30'); await C.fill('#sf-n', 'Pierna');
+  await C.getByRole('button', { name: 'Registrar sesión', exact: true }).click();
+  await C.waitForFunction(() => sesInfo(accesoDe(window.__ana)).rest === 8, null, { timeout: 15000 });
+  await C.locator('details', { hasText: 'Historial de sesiones' }).locator('summary').click();
+  await ver(C, 'Pierna');
+  await foto(C, 'sesiones-coach');
+  await K.evaluate(() => irA('hoy'));
+  await ver(K, 'Tus sesiones con Génesis');
+  await ver(K, 'de 10 te quedan');
+  await K.locator('details', { hasText: 'Ver todas mis sesiones' }).locator('summary').click();
+  await ver(K, 'Pierna');
+  await foto(K, 'sesiones-cliente');
+  await C.locator('details[open]', { hasText: 'Historial de sesiones' }).getByRole('button', { name: /Borrar la sesión/ }).first().click();
+  await C.locator('details[open]', { hasText: 'Historial de sesiones' }).getByRole('button', { name: /Borrar la sesión/ }).first().click();
+  await C.waitForFunction(() => sesInfo(accesoDe(window.__ana)).rest === 9, null, { timeout: 15000 });
+  await C.getByRole('radio', { name: 'Mensualidad' }).click();
+  await C.waitForFunction(() => accesoDe(window.__ana)?.plan === 'mes', null, { timeout: 15000 });
+
   // 6. Pago vencido corta el acceso, y se paga por SINPE con comprobante
   await C.evaluate(() => irA('pagos'));
   await C.fill('#sp-tel', '8888-1234'); await C.fill('#sp-monto', '25000'); await C.fill('#sp-tit', 'Gene Fit');
@@ -347,6 +374,13 @@ try {
   if (resto.ses) problemas.push('Quedó el entreno en curso guardado tras salir');
   if (resto.dbs.some(n => /firestore/.test(n) && /main/.test(n))) problemas.push('Quedó la copia de Firestore tras salir: ' + resto.dbs.join(','));
   await foto(K, 'tras-salir');
+  // Olvidé mi clave: correo enviado, aviso de spam y WhatsApp de Génesis
+  await K.getByRole('button', { name: 'Olvidé mi clave' }).click();
+  await K.fill('#amail', 'ana@genefit.test'); await K.click('#abtn');
+  await ver(K, 'Revisa tu correo'); await ver(K, 'spam');
+  const wa = await K.getByRole('link', { name: /WhatsApp/ }).getAttribute('href');
+  if (!/^https:\/\/wa\.me\/50660252568\?text=.*ana%40genefit\.test/.test(wa)) problemas.push('Enlace de WhatsApp mal: ' + wa);
+  await foto(K, 'olvido-clave');
   console.log('Flujo completo OK');
 } catch (e) {
   for (const pg of b.contexts().flatMap(c => c.pages())) await pg.screenshot({ path: OUT + '/fallo-' + Math.random().toString(36).slice(2, 6) + '.png' }).catch(() => {});
