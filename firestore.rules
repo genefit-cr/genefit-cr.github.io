@@ -63,9 +63,11 @@ service cloud.firestore {
     // ---------- Ficha de cada cliente (lo que su coach puede ver) ----------
     match /clientes/{uid} {
       function camposCliente() {
-        return ['alias', 'alta', 'compartir', 'v', 'ultimo', 'ultTitulo', 'ultMin', 'ultPRs', 'ultVol', 'ultMsg', 'sexo', 'tend', 'compPend', 'dolor'];
+        return ['alias', 'alta', 'compartir', 'v', 'ultimo', 'ultTitulo', 'ultMin', 'ultPRs', 'ultVol', 'ultMsg', 'sexo', 'tend', 'compPend', 'dolor', 'ses'];
       }
       function sexoValido() { return !('sexo' in datos()) || datos().sexo in ['m', 'f']; }
+      // Sesiones: las compra y descuenta el propio cliente; el coach solo las ve.
+      function sesValida() { return !('ses' in datos()) || (datos().ses.compradas is number && datos().ses.log is list && datos().ses.paq is list); }
       // El último mensaje solo lo puede poner quien lo escribió (si no cambia, no se revisa).
       function ultMsgValido() {
         return !('ultMsg' in datos())
@@ -74,10 +76,10 @@ service cloud.firestore {
       }
       allow read: if soy(uid) || esCoach();
       allow create: if soy(uid) && !eliminado(uid)
-        && datos().keys().hasOnly(camposCliente()) && texto(datos().alias, 40) && ultMsgValido() && sexoValido();
+        && datos().keys().hasOnly(camposCliente()) && texto(datos().alias, 40) && ultMsgValido() && sexoValido() && sesValida();
       // Solo se revisan los campos que cambian, para no trabar fichas antiguas con campos viejos.
       allow update: if (soy(uid) && !eliminado(uid)
-          && cambia().hasOnly(camposCliente()) && texto(datos().get('alias', ''), 40) && ultMsgValido() && sexoValido())
+          && cambia().hasOnly(camposCliente()) && texto(datos().get('alias', ''), 40) && ultMsgValido() && sexoValido() && sesValida())
         || (esCoach() && cambia().hasOnly(['ultMsg', 'compPend']) && ultMsgValido());
       allow delete: if esCoach();
 
@@ -114,12 +116,12 @@ service cloud.firestore {
         allow write: if esCoach();
       }
 
-      // Comprobantes de pago por SINPE: el cliente los sube (aunque su mensualidad esté vencida),
-      // solo el coach los aprueba o rechaza.
+      // Comprobantes de pago por SINPE: el cliente los adjunta al comprar sesiones;
+      // solo el coach los marca como recibidos o no.
       match /comprobantes/{id} {
         allow read: if soy(uid) || esCoach();
         allow create: if soy(uid) && !eliminado(uid) && datos().estado == 'pendiente'
-          && datos().keys().hasOnly(['img', 'ref', 'monto', 'fecha', 'estado'])
+          && datos().keys().hasOnly(['img', 'ref', 'monto', 'fecha', 'estado', 'cant'])
           && datos().img is string && datos().img.matches('^data:image/(jpeg|png|webp);base64,.*')
           && datos().img.size() < 900000 && texto(datos().ref, 40) && numero(datos().monto) && numero(datos().fecha);
         allow update: if esCoach() && cambia().hasOnly(['estado', 'revisado'])
