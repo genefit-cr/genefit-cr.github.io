@@ -36,9 +36,9 @@ service cloud.firestore {
       allow create: if dentro() && datos().uid == request.auth.uid
         && datos().keys().hasOnly(['uid', 'nombre']) && texto(datos().nombre, 40);
       // El coach también guarda aquí sus datos de cobro por SINPE Móvil (los ven sus clientes para pagarle).
-      allow update: if esCoach() && datos().keys().hasOnly(['uid', 'nombre', 'sinpe', 'monto', 'titular'])
+      allow update: if esCoach() && datos().keys().hasOnly(['uid', 'nombre', 'sinpe', 'monto', 'titular', 'ntfy'])
         && datos().uid is string && texto(datos().nombre, 40)
-        && texto(datos().get('sinpe', ''), 12) && texto(datos().get('titular', ''), 60)
+        && texto(datos().get('sinpe', ''), 12) && texto(datos().get('titular', ''), 60) && texto(datos().get('ntfy', ''), 64)
         && (!('monto' in datos()) || numero(datos().monto));
       allow delete: if false;
     }

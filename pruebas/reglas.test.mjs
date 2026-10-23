@@ -92,6 +92,8 @@ await t('ruta desconocida bloqueada', no(bob.doc('otra/cosa').set({ a: 1 })));
 
 // SINPE
 await t('coach guarda SINPE', ok(coach.doc('config/coach').set({ sinpe: '88881234', monto: 25000, titular: 'Gene' }, { merge: true })));
+await t('coach activa ntfy', ok(coach.doc('config/coach').set({ ntfy: 'genefit-abc123' }, { merge: true })));
+await t('bob NO cambia ntfy', no(bob.doc('config/coach').set({ ntfy: 'otro' }, { merge: true })));
 await t('bob NO cambia SINPE', no(bob.doc('config/coach').set({ sinpe: '80000000' }, { merge: true })));
 await t('bob sube comprobante', ok(bob.doc('clientes/bob/comprobantes/c1').set({ img: foto, ref: '123', monto: 25000, fecha: 1, estado: 'pendiente' })));
 await t('bob NO se aprueba solo', no(bob.doc('clientes/bob/comprobantes/c2').set({ img: foto, ref: '', monto: 25000, fecha: 1, estado: 'aprobado' })));
