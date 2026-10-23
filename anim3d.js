@@ -135,17 +135,18 @@ function crearMuneco(mus, sexo) {
   const cr = esf(0.16, PAL.piel); cr.scale.set(0.95, 1, 0.95); cab.add(cr);
   for (const s of [1, -1]) {
     cab.add(pon(esf(0.035, PAL.piel), s * 0.152, 0, 0));
-    cab.add(pon(esf(0.04, PAL.blanco, null, 0.25), s * 0.056, 0.012, 0.128));
-    cab.add(pon(esf(0.026, PAL.iris, null, 0.2), s * 0.056, 0.012, 0.155));
-    cab.add(pon(esf(0.013, PAL.negro, null, 0.2), s * 0.056, 0.012, 0.176));
-    cab.add(pon(esf(0.007, 0xffffff, null, 0.1), s * 0.05, 0.022, 0.186));
-    const ceja = cap(0.009, 0.04, PAL.pelo); ceja.rotation.z = (90 - s * 8) * R; pon(ceja, s * 0.058, 0.068, 0.14); cab.add(ceja);
-    if (mujer) { const pest = cap(0.004, 0.02, PAL.negro); pest.rotation.z = (90 + s * 25) * R; pon(pest, s * 0.088, 0.035, 0.145); cab.add(pest); }
+    // Ojos hundidos en la cara (aplanados), para que no se vean saltones
+    const ojo = esf(0.034, PAL.blanco, null, 0.25); ojo.scale.set(1, 1.15, 0.35); cab.add(pon(ojo, s * 0.05, 0.005, 0.134));
+    const iris = esf(0.022, PAL.iris, null, 0.2); iris.scale.set(1, 1.1, 0.25); cab.add(pon(iris, s * 0.05, 0.003, 0.1425));
+    const pup = esf(0.011, PAL.negro, null, 0.2); pup.scale.set(1, 1, 0.25); cab.add(pon(pup, s * 0.05, 0.003, 0.1455));
+    cab.add(pon(esf(0.0055, 0xffffff, null, 0.1), s * 0.044, 0.013, 0.148));
+    const ceja = cap(0.009, 0.04, PAL.pelo); ceja.rotation.z = (90 - s * 10) * R; pon(ceja, s * 0.052, 0.058, 0.138); cab.add(ceja);
+    if (mujer) { const pest = cap(0.004, 0.02, PAL.negro); pest.rotation.z = (90 + s * 25) * R; pon(pest, s * 0.08, 0.03, 0.13); cab.add(pest); }
   }
   cab.add(pon(esf(0.022, PAL.piel), 0, -0.018, 0.155));
   const boca = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.006, 8, 18, Math.PI), mat(PAL.boca)); boca.rotation.z = Math.PI; pon(boca, 0, -0.052, 0.146); cab.add(boca);
   // Pelo
-  const pelo = esf(0.168, PAL.pelo, null, 0.7); pelo.scale.set(1, 0.6, 1.02); pon(pelo, 0, 0.065, -0.012); cab.add(pelo);
+  const pelo = esf(0.168, PAL.pelo, null, 0.7); pelo.scale.set(1, 0.55, 1.02); pon(pelo, 0, 0.09, -0.02); cab.add(pelo);
   if (mujer) {
     for (const [y, z, r] of [[0.07, -0.17, 0.06], [0.0, -0.2, 0.052], [-0.07, -0.21, 0.045], [-0.13, -0.2, 0.035]]) cab.add(pon(esf(r, PAL.pelo, null, 0.7), 0, y, z));
     const liga = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.012, 8, 20), mat(PAL.zapato.f)); pon(liga, 0, 0.06, -0.165); liga.rotation.x = 70 * R; cab.add(liga);
