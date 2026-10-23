@@ -186,8 +186,9 @@ body.tema-f{--accent:#FF6EB4;--ok-bg:#331020;--ok-line:#6E2249;--ok-fg:#EBB0CC;-
 @media (prefers-reduced-motion:reduce){.v3d canvas{transition:none}}
 /* Foto de la entrenadora */
 .afiche{width:100%;height:auto;aspect-ratio:900/898;border-radius:20px;display:block;background:var(--card)}
-.coachfoto,.fcoach{border-radius:50%;object-fit:cover;flex:none;border:2px solid var(--accent);background:var(--raise)}
-.coachfoto{width:30px;height:30px;margin-left:2px}
+.coachfoto,.fcoach{object-fit:cover;object-position:50% 12%;flex:none;background:var(--raise)}
+.fcoach{border-radius:14px}
+.coachfoto{width:34px;height:34px;border-radius:9px;margin-left:2px}
 .saludo{border-color:var(--accent);background:linear-gradient(160deg,var(--ok-bg),var(--card) 70%)}
 /* Hojas y pantallas superpuestas */
 .sheet-bg{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center}
@@ -243,7 +244,7 @@ body.tema-f{--accent:#FF6EB4;--ok-bg:#331020;--ok-line:#6E2249;--ok-fg:#EBB0CC;-
 <body>
 <div class="wrap" id="app">
   <div class="top" id="top">
-    <span class="row" style="gap:10px"><span class="marca"><i><svg viewBox="0 0 24 24" fill="none" stroke="#0E0F12" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6v12M18 6v12M3 9v6M21 9v6M6 12h12"/></svg></i>GENEFIT<img class="coachfoto" src="icons/genesis.jpg" alt="Génesis Garita, entrenadora" width="30" height="30"></span><span id="rol" class="rol" hidden>COACH</span></span>
+    <span class="row" style="gap:10px"><span class="marca"><i><svg viewBox="0 0 24 24" fill="none" stroke="#0E0F12" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6v12M18 6v12M3 9v6M21 9v6M6 12h12"/></svg></i>GENEFIT<img class="coachfoto" src="icons/genesis-retrato.jpg" alt="Génesis Garita, entrenadora" width="34" height="34"></span><span id="rol" class="rol" hidden>COACH</span></span>
     <span id="modoBtn"></span>
   </div>
   <main id="view"><div class="cargando">Cargando Genefit…</div></main>
@@ -285,9 +286,10 @@ const EJEMPLOS=[
   {nombre:'Pierna completa',ejercicios:[{nombre:'Extensión de pierna',series:3,reps:12,kg:40,desc:60},{nombre:'Sentadilla hack (máquina)',series:3,reps:10,kg:80,desc:120},{nombre:'Sentadilla goblet',series:1,reps:15,kg:24,desc:60},{nombre:'Curl femoral acostado',series:3,reps:12,kg:35,desc:60},{nombre:'Pantorrilla de pie',series:4,reps:15,kg:40,desc:45}]}];
 
 /* ================= La entrenadora ================= */
-const ENTRENA={nombre:'Génesis Garita',corto:'Génesis',foto:'icons/genesis.jpg',afiche:'icons/genesis-afiche.jpg',titulo:'Personal Trainer',
+const ENTRENA={nombre:'Génesis Garita',corto:'Génesis',foto:'icons/genesis-retrato.jpg',afiche:'icons/genesis-afiche.jpg',titulo:'Personal Trainer',
   esp:['Evaluación corporal','Entrenamiento personal y en pareja','Rutinas personalizadas','Aumento de masa muscular','Recomposición corporal','Rehabilitación deportiva','Adultos mayores']};
-const fotoCoach=(t=44)=>`<img class="fcoach" src="${ENTRENA.foto}" alt="${ENTRENA.nombre}" width="${t}" height="${t}" style="width:${t}px;height:${t}px">`;
+/* Foto vertical de Génesis (como en su afiche). t = ancho en px */
+const fotoCoach=(t=44)=>`<img class="fcoach" src="${ENTRENA.foto}" alt="${ENTRENA.nombre}" width="${t}" height="${Math.round(t*1.6)}" style="width:${t}px;height:${Math.round(t*1.6)}px">`;
 
 /* ================= Utilidades ================= */
 const $=s=>document.querySelector(s);
@@ -478,7 +480,7 @@ function tarjetaSexo(){if(!S.perfil||S.perfil.sexo)return'';return `<section cla
 /* Saludo de Génesis la primera vez que el cliente entra */
 function tarjetaSaludo(){if(S.esOwner||!S.perfil||ls.get('gf-saludo-'+S.me,false))return'';
   const n=(S.perfil.alias||S.meName||'').split(' ')[0],f=S.perfil.sexo==='f'||(!S.perfil.sexo&&ls.get('gf-tema','')==='f');
-  return `<section class="card line saludo"><div class="row" style="align-items:flex-start;gap:12px">${fotoCoach(56)}<div class="grow"><b style="font-size:18px">¡Hola${n?', '+esc(n):''}! 👋</b>
+  return `<section class="card line saludo"><div class="row" style="align-items:flex-start;gap:14px">${fotoCoach(84)}<div class="grow"><b style="font-size:18px">¡Hola${n?', '+esc(n):''}! 👋</b>
    <p style="margin:6px 0 0;font-size:15px;line-height:1.5;color:#D5D9DF">Soy ${ENTRENA.corto}, tu entrenadora. ${f?'Bienvenida':'Bienvenido'} a Genefit: aquí vas a ver las rutinas que te preparo, registrar tus entrenos y ver cómo avanzas. Cualquier duda, escríbeme. ¡Vamos con todo! 💪</p></div></div>
    <div class="grid2"><button class="btn primary" onclick="ls.set('gf-saludo-'+S.me,true);render()">¡Vamos!</button><button class="btn ghost" onclick="ls.set('gf-saludo-'+S.me,true);irA('coach')">Escribirle</button></div></section>`}
 
@@ -1164,7 +1166,7 @@ async function enviarMsg(ev,cid){ev.preventDefault();const i=$('#msgIn'),t=i.val
   if(!ok){i.value=t;BORR[cid]=t}else{marcarVisto(cid);i.blur()}}
 function vCoach(){
   marcarVisto(S.me);const nom=S.coachNombre||'Génesis';
-  return `<div class="stack" style="padding-top:12px"><div class="row">${fotoCoach(64)}<div class="grow"><span class="small">Tu entrenadora · ${ENTRENA.titulo}</span><h1 style="font-size:26px">${esc(S.coachNombre||ENTRENA.nombre)}</h1></div></div>
+  return `<div class="stack" style="padding-top:12px"><div class="row" style="align-items:flex-end">${fotoCoach(96)}<div class="grow"><span class="small">Tu entrenadora · ${ENTRENA.titulo}</span><h1 style="font-size:26px">${esc(S.coachNombre||ENTRENA.nombre)}</h1></div></div>
    ${S.asig.length?`<section class="card"><b>Rutinas que te asignó</b>${S.asig.map(a=>`<div class="list-row"><div class="grow"><b>${esc(a.nombre)}</b><div class="small">${(a.ejercicios||[]).length} ejercicios${a.dias?.length?' · '+a.dias.map(d=>NOMDIA[d]).join(', '):''}</div></div>${S.ses?'':`<button class="btn sm primary" onclick="iniciar('asig',${J(a.id)})">Empezar</button>`}</div>`).join('')}</section>`:''}
    ${tarjetaSinpe()}${tarjetaRetos()}
    <section class="card"><b>Mensajes</b>${hiloHTML(S.msgs)}${cajaMsg(S.me)}</section></div>`}
