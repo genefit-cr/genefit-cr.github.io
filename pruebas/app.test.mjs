@@ -69,16 +69,11 @@ try {
   await ver(K, 'Empuje');
   await K.getByRole('button', { name: 'Empezar' }).first().click();
   await ver(K, 'Agregar serie');
-  // Animación 3D en la ficha del ejercicio
+  // Ficha del ejercicio: por ahora muestra las fotos (3D apagado)
   await K.evaluate(() => abrirFicha(S.ses.ejercicios[0].nombre));
-  await K.waitForSelector('#v3d.listo canvas', { timeout: 20000 });
-  await K.waitForTimeout(800);
-  await foto(K, 'ficha-3d');
-  await K.getByRole('button', { name: 'Pausar animación' }).click();
-  await K.getByRole('button', { name: 'Fotos' }).click();
-  if (await K.locator('#v3d').count()) problemas.push('No cambió a fotos');
-  await K.getByRole('button', { name: '3D' }).click();
-  await K.waitForSelector('#v3d.listo canvas', { timeout: 20000 });
+  await ver(K, 'Cómo se hace');
+  if (await K.locator('#v3d').count()) problemas.push('La ficha no debía mostrar el 3D');
+  if (!(await K.locator('#ficha .foto').count())) problemas.push('La ficha no muestra las fotos');
   await K.evaluate(() => cerrarFicha());
   // Etapa 2: tipo de serie, RPE, superserie
   await K.evaluate(() => menuSerie(0, 0));
