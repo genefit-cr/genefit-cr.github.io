@@ -184,6 +184,10 @@ body.tema-f{--accent:#FF6EB4;--ok-bg:#331020;--ok-line:#6E2249;--ok-fg:#EBB0CC;-
 .vtog{position:absolute;right:max(16px,env(safe-area-inset-right,0px));top:calc(16px + env(safe-area-inset-top,0px));display:flex;gap:4px;background:rgba(14,15,18,.7);padding:4px;border-radius:999px}
 .vtog .chip{border:0;min-height:32px}
 @media (prefers-reduced-motion:reduce){.v3d canvas{transition:none}}
+/* Foto de la entrenadora */
+.coachfoto,.fcoach{border-radius:50%;object-fit:cover;flex:none;border:2px solid var(--accent);background:var(--raise)}
+.coachfoto{width:30px;height:30px;margin-left:2px}
+.saludo{border-color:var(--accent);background:linear-gradient(160deg,var(--ok-bg),var(--card) 70%)}
 /* Hojas y pantallas superpuestas */
 .sheet-bg{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center}
 .sheet{background:var(--card);width:100%;max-width:560px;max-height:88vh;border-radius:24px 24px 0 0;display:flex;flex-direction:column;padding:18px max(16px,env(safe-area-inset-right,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
@@ -238,7 +242,7 @@ body.tema-f{--accent:#FF6EB4;--ok-bg:#331020;--ok-line:#6E2249;--ok-fg:#EBB0CC;-
 <body>
 <div class="wrap" id="app">
   <div class="top" id="top">
-    <span class="row" style="gap:10px"><span class="marca"><i><svg viewBox="0 0 24 24" fill="none" stroke="#0E0F12" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6v12M18 6v12M3 9v6M21 9v6M6 12h12"/></svg></i>GENEFIT</span><span id="rol" class="rol" hidden>COACH</span></span>
+    <span class="row" style="gap:10px"><span class="marca"><i><svg viewBox="0 0 24 24" fill="none" stroke="#0E0F12" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6v12M18 6v12M3 9v6M21 9v6M6 12h12"/></svg></i>GENEFIT<img class="coachfoto" src="icons/genesis.jpg" alt="Génesis Garita, entrenadora" width="30" height="30"></span><span id="rol" class="rol" hidden>COACH</span></span>
     <span id="modoBtn"></span>
   </div>
   <main id="view"><div class="cargando">Cargando Genefit…</div></main>
@@ -278,6 +282,11 @@ const EJEMPLOS=[
   {nombre:'Empuje',ejercicios:[{nombre:'Press de banca',series:4,reps:8,kg:60,desc:90},{nombre:'Press militar con mancuernas',series:3,reps:10,kg:16,desc:75},{nombre:'Cruce de poleas',series:3,reps:12,kg:12.5,desc:60},{nombre:'Extensión de tríceps en polea',series:3,reps:12,kg:20,desc:60}]},
   {nombre:'Tirón',ejercicios:[{nombre:'Jalón al pecho',series:4,reps:10,kg:50,desc:90},{nombre:'Remo con barra',series:4,reps:8,kg:50,desc:90},{nombre:'Face pull',series:3,reps:15,kg:15,desc:60},{nombre:'Curl con barra Z',series:3,reps:10,kg:25,desc:60}]},
   {nombre:'Pierna completa',ejercicios:[{nombre:'Extensión de pierna',series:3,reps:12,kg:40,desc:60},{nombre:'Sentadilla hack (máquina)',series:3,reps:10,kg:80,desc:120},{nombre:'Sentadilla goblet',series:1,reps:15,kg:24,desc:60},{nombre:'Curl femoral acostado',series:3,reps:12,kg:35,desc:60},{nombre:'Pantorrilla de pie',series:4,reps:15,kg:40,desc:45}]}];
+
+/* ================= La entrenadora ================= */
+const ENTRENA={nombre:'Génesis Garita',corto:'Génesis',foto:'icons/genesis.jpg',titulo:'Personal Trainer',
+  esp:['Evaluación corporal','Entrenamiento personal y en pareja','Rutinas personalizadas','Aumento de masa muscular','Recomposición corporal','Rehabilitación deportiva','Adultos mayores']};
+const fotoCoach=(t=44)=>`<img class="fcoach" src="${ENTRENA.foto}" alt="${ENTRENA.nombre}" width="${t}" height="${t}" style="width:${t}px;height:${t}px">`;
 
 /* ================= Utilidades ================= */
 const $=s=>document.querySelector(s);
@@ -402,7 +411,7 @@ async function escribir(fn,ok){
 /* Nombres: cada cliente escribe cómo quiere que lo llamen */
 function pedirNombres(){}
 const nombreCliente=c=>c.alias||'Cliente';
-const nombreDe=id=>{if(id===S.me)return S.meName||'Tú';const c=S.clientes.find(x=>x.id===id);return c?.alias||(id===S.coachId?(S.coachNombre||'Tu coach'):'Cliente')};
+const nombreDe=id=>{if(id===S.me)return S.meName||'Tú';const c=S.clientes.find(x=>x.id===id);return c?.alias||(id===S.coachId?(S.coachNombre||'Génesis'):'Cliente')};
 
 /* ================= Arranque ================= */
 let unsubCoach=null;
@@ -465,6 +474,13 @@ function sexoForm(v){S.sexoNuevo=v;document.querySelectorAll('[data-sexo]').forE
 async function elegirSexo(v){if(await escribir(()=>S.db.doc(BASE()).update({sexo:v}),v==='m'?'Listo: Genefit en azul':'Listo: Genefit en rosa'))aplicarTema(v)}
 function tarjetaSexo(){if(!S.perfil||S.perfil.sexo)return'';return `<section class="card line"><b>Elige el color de tu app</b><span class="small">Genefit se pinta de azul para hombres y de rosa para mujeres.</span>${sexoChips(null,'elegirSexo')}</section>`}
 
+/* Saludo de Génesis la primera vez que el cliente entra */
+function tarjetaSaludo(){if(S.esOwner||!S.perfil||ls.get('gf-saludo-'+S.me,false))return'';
+  const n=(S.perfil.alias||S.meName||'').split(' ')[0],f=S.perfil.sexo==='f'||(!S.perfil.sexo&&ls.get('gf-tema','')==='f');
+  return `<section class="card line saludo"><div class="row" style="align-items:flex-start;gap:12px">${fotoCoach(56)}<div class="grow"><b style="font-size:18px">¡Hola${n?', '+esc(n):''}! 👋</b>
+   <p style="margin:6px 0 0;font-size:15px;line-height:1.5;color:#D5D9DF">Soy ${ENTRENA.corto}, tu entrenadora. ${f?'Bienvenida':'Bienvenido'} a Genefit: aquí vas a ver las rutinas que te preparo, registrar tus entrenos y ver cómo avanzas. Cualquier duda, escríbeme. ¡Vamos con todo! 💪</p></div></div>
+   <div class="grid2"><button class="btn primary" onclick="ls.set('gf-saludo-'+S.me,true);render()">¡Vamos!</button><button class="btn ghost" onclick="ls.set('gf-saludo-'+S.me,true);irA('coach')">Escribirle</button></div></section>`}
+
 /* Primer ingreso del cliente */
 async function crearPerfil(ev){ev.preventDefault();const alias=$('#alias').value.trim().slice(0,40);
   if(!S.sexoNuevo)return toast('Elige hombre o mujer');
@@ -526,10 +542,12 @@ async function salir(){if(S.ses&&!confirmSalir){confirmSalir=true;return toast('
   location.reload()}
 let confirmSalir=false;
 function vLogin(){const r=S.authModo==='crear',o=S.authModo==='olvido';
-  return `<form class="stack auth" style="padding-top:48px" onsubmit="enviarAuth(event)">
+  return `<form class="stack auth" style="padding-top:36px" onsubmit="enviarAuth(event)">
    <span class="marca"><i><svg viewBox="0 0 24 24" fill="none" stroke="#0E0F12" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6v12M18 6v12M3 9v6M21 9v6M6 12h12"/></svg></i>GENEFIT</span>
-   <h1 style="font-size:44px;line-height:.98">${o?'Recupera<br>tu clave':r?'Crea tu<br>cuenta':'Tu plan.<br>Tu coach.<br><span style="color:var(--accent)">Hoy.</span>'}</h1>
-   ${r?`<div class="field"><label class="lbl" for="anom">Tu nombre</label><input class="input" id="anom" required maxlength="40" autocomplete="name" placeholder="Como te llama tu coach"></div>
+   <div class="row" style="gap:14px">${fotoCoach(r||o?64:88)}<div><div style="font-family:var(--display);font-weight:900;font-size:20px">${ENTRENA.nombre}</div><span class="eyebrow ac">${ENTRENA.titulo}</span></div></div>
+   <h1 style="font-size:44px;line-height:.98">${o?'Recupera<br>tu clave':r?'Crea tu<br>cuenta':`Entrena<br>con ${ENTRENA.corto}.<br><span style="color:var(--accent)">Hoy.</span>`}</h1>
+   ${r||o?'':`<div class="chips scroll" aria-label="Especialidades">${ENTRENA.esp.map(x=>`<span class="tag" style="flex:none">${x}</span>`).join('')}</div>`}
+   ${r?`<div class="field"><label class="lbl" for="anom">Tu nombre</label><input class="input" id="anom" required maxlength="40" autocomplete="name" placeholder="¿Cómo te llamas?"></div>
    <div class="field"><span class="lbl">Soy</span>${sexoChips(S.sexoNuevo,'sexoForm')}</div>`:''}
    <div class="field"><label class="lbl" for="amail">Correo</label><input class="input" id="amail" type="email" required autocomplete="email" inputmode="email" placeholder="tucorreo@gmail.com"></div>
    ${o?'':`<div class="field"><label class="lbl" for="aclave">Clave</label><input class="input" id="aclave" type="password" required minlength="${r?8:6}" autocomplete="${r?'new-password':'current-password'}" placeholder="${r?'Mínimo 8 caracteres':'Tu clave'}"></div>`}
@@ -550,9 +568,10 @@ function vConfigCoach(){return `<div class="stack" style="padding-top:28px"><h1>
   <button class="btn primary go" onclick="serCoach()">Soy el coach</button>
   <button class="btn ghost block" onclick="ls.set('gf-soycliente',true);render()">Soy cliente</button></div>`}
 function vBienvenida(){return `<form class="stack" style="padding-top:28px" onsubmit="crearPerfil(event)">
-  <h1 style="font-size:44px;line-height:.98">Tu plan.<br>Tu coach.<br><span style="color:var(--accent)">Hoy.</span></h1>
-  <p class="small" style="font-size:16px">Aquí ves la rutina que te asigna tu coach, la haces con un toque y queda guardado tu progreso.</p>
-  <div class="field"><label class="lbl" for="alias">¿Cómo quieres que te llame tu coach?</label><input class="input" id="alias" maxlength="40" required value="${esc(S.meName)}" placeholder="Tu nombre" autocomplete="given-name"></div>
+  <div class="row" style="gap:14px">${fotoCoach(64)}<div><div style="font-family:var(--display);font-weight:900;font-size:20px">${ENTRENA.nombre}</div><span class="eyebrow ac">${ENTRENA.titulo}</span></div></div>
+  <h1 style="font-size:44px;line-height:.98">Entrena<br>con ${ENTRENA.corto}.<br><span style="color:var(--accent)">Hoy.</span></h1>
+  <p class="small" style="font-size:16px">Aquí ves la rutina que ${ENTRENA.corto} te prepara, la haces con un toque y queda guardado tu progreso.</p>
+  <div class="field"><label class="lbl" for="alias">¿Cómo te llamas?</label><input class="input" id="alias" maxlength="40" required value="${esc(S.meName)}" placeholder="Tu nombre" autocomplete="given-name"></div>
   <div class="field"><span class="lbl">Soy</span>${sexoChips(S.sexoNuevo,'sexoForm')}</div>
   <button class="btn primary go">Empezar</button>
   <p class="small">Solo se pregunta una vez. Después entras directo a tu entrenamiento de hoy.</p></form>`}
@@ -573,20 +592,20 @@ function vHoy(){
   const hoy=new Date(),L=lunes(Date.now()),hechos=new Set(S.hist.map(h=>new Date(h.fecha).toDateString()));
   const nom=S.perfil?.alias||S.meName||'';
   let h=`<div class="stack" style="padding-top:12px"><div><span class="small">${esc(hoy.toLocaleDateString('es-CR',{weekday:'long',day:'numeric',month:'long'}))}</span><h1>Hola${nom?', '+esc(nom.split(' ')[0]):''}</h1></div>`;
-  h+=tarjetaSexo()+tarjetaHuella()+bannerInstalar();
+  h+=tarjetaSaludo()+tarjetaSexo()+tarjetaHuella()+bannerInstalar();
   {const pa=pago(S.acceso);if(['pronto','venc'].includes(pa.k)||S.comp?.[0]?.estado==='pendiente')h+=tarjetaSinpe()}
   h+=`<div class="semana" aria-label="Esta semana">${LETRAS.map((l,i)=>{const t=new Date(L+i*DIA);const c=hechos.has(t.toDateString())?'hecho':(i===hoyDow()?'hoy':'');return `<div class="dia ${c}"><span class="tiny">${l}</span><b>${t.getDate()}</b></div>`}).join('')}</div>`;
   if(S.ses){const all=S.ses.ejercicios.flatMap(e=>e.sets);h+=`<div class="card line" style="border-color:var(--ok-line);background:var(--ok-bg)"><span class="eyebrow ac">En curso</span><h2>${esc(S.ses.rutina)}</h2><span class="small" style="color:var(--ok-fg)">${all.filter(x=>x.ok).length} de ${all.length} series · empezaste ${hace(S.ses.inicio)}</span><button class="btn primary go" onclick="abrirSesion()">${IC.play} Continuar</button></div>`}
   const r=rutinaDeHoy();
   if(r){const exs=r.ejercicios||[],series=exs.reduce((a,e)=>a+(+e.series||0),0),min=Math.round(exs.reduce((a,e)=>a+(+e.series||0)*((+e.desc||90)+40),0)/60);
     const cuando=r.proxima?`Próxima: ${NOMDIA[(hoyDow()+r.proxima)%7]}`:'Rutina de hoy';
-    h+=`<section class="card line"><div class="row between"><span class="eyebrow ac">${cuando}</span><span class="small">De tu coach</span></div>
+    h+=`<section class="card line"><div class="row between"><span class="eyebrow ac">${cuando}</span><span class="small">De Génesis</span></div>
       <div><h2 style="font-size:34px">${esc(r.nombre)}</h2><span class="small">${exs.length} ejercicios · ${series} series · ~${min} min</span></div>
       <div class="grid4">${exs.slice(0,4).map(e=>mini(e.nombre,'mini sq')).join('')}</div>
       ${(n=>n?`<div class="small" style="color:var(--warn)">⚠ ${n} ejercicio${n>1?'s cargan':' carga'} zonas donde te duele. Al empezar te damos alternativas.</div>`:'')(exs.filter(e=>enRiesgo(e.nombre).length).length)}
       ${r.nota?`<div class="row" style="align-items:flex-start;background:var(--raise);border-radius:14px;padding:12px;gap:10px"><span style="color:var(--accent);flex:none;width:18px;height:18px;display:flex">${IC.chat}</span><span style="font-size:15px;color:#D5D9DF">${esc(r.nota)}</span></div>`:''}
       ${S.ses?'':`<button class="btn primary go" onclick="iniciar('asig',${J(r.id)})">${IC.play} Empezar</button>`}</section>`}
-  else h+=`<section class="card line"><span class="eyebrow ac">Rutina de hoy</span><h2>Tu coach aún no te asigna rutina</h2><p class="small" style="margin:0">Mientras tanto puedes hacer un entrenamiento libre o armar tu propia rutina.</p>
+  else h+=`<section class="card line"><span class="eyebrow ac">Rutina de hoy</span><h2>Génesis aún no te asigna rutina</h2><p class="small" style="margin:0">Mientras tanto puedes hacer un entrenamiento libre o armar tu propia rutina.</p>
     ${S.ses?'':`<button class="btn primary block" onclick="iniciar('libre')">${IC.play} Entrenamiento libre</button>`}</section>`;
   const ult=[...S.recs].sort((a,b)=>b.fecha-a.fecha)[0],rc=racha();
   h+=`<div class="grid2"><div class="tile"><span class="tiny">Racha</span><span class="big">${rc} <span class="u">${rc===1?'semana':'semanas'}</span></span></div>
@@ -594,7 +613,7 @@ function vHoy(){
   h+=tarjetaRetos()+tarjetaDolor();
   const otras=S.asig.filter(a=>a.id!==r?.id);
   if(otras.length||S.rut.length||r){h+=`<div class="row between" style="margin-top:4px"><h3 class="eyebrow">Otras rutinas</h3><button class="btn sm ghost" onclick="nuevaRutina('rutina')">+ Mi rutina</button></div>`;
-    h+=otras.map(a=>filaRutina(a,'asig','de tu coach')).join('')+S.rut.map(a=>filaRutina(a,'rut','tuya')).join('');
+    h+=otras.map(a=>filaRutina(a,'asig','de Génesis')).join('')+S.rut.map(a=>filaRutina(a,'rut','tuya')).join('');
     if(r&&!S.ses)h+=`<button class="btn ghost block" onclick="iniciar('libre')">Entrenamiento libre</button>`}
   else h+=`<button class="btn ghost block" onclick="nuevaRutina('rutina')">+ Crear mi propia rutina</button>`;
   return h+'</div>'}
@@ -704,7 +723,7 @@ function abrirTerminar(){const t=totales(),min=Math.max(1,Math.round((Date.now()
    <div class="body"><div class="grid3"><div class="tile" style="background:var(--raise)"><span class="tiny">Duración</span><span class="big" style="font-size:22px">${min} <span class="u">min</span></span></div><div class="tile" style="background:var(--raise)"><span class="tiny">Series</span><span class="big" style="font-size:22px">${t.hechas}</span></div><div class="tile" style="background:var(--raise)"><span class="tiny">Volumen</span><span class="big" style="font-size:22px">${kg(t.vol)}</span></div></div>
    ${t.hechas?'':'<div class="notice">No marcaste ninguna serie como hecha. Marca con ✓ las series que hiciste para que cuenten.</div>'}
    <div class="field"><label class="lbl" for="ft">Título</label><input class="input" id="ft" value="${esc(S.ses.rutina)}" maxlength="80"></div>
-   <div class="field"><label class="lbl" for="fn">Nota para tu coach (opcional)</label><textarea class="input" id="fn" maxlength="300" placeholder="¿Cómo te sentiste?"></textarea></div>
+   <div class="field"><label class="lbl" for="fn">Nota para Génesis (opcional)</label><textarea class="input" id="fn" maxlength="300" placeholder="¿Cómo te sentiste?"></textarea></div>
    <button class="btn primary go" id="btnGuardar" onclick="guardarSesion()">Guardar</button></div>`)}
 async function guardarSesion(){
   const s=S.ses,titulo=$('#ft').value.trim()||s.rutina,nota=$('#fn').value.trim();$('#btnGuardar').disabled=true;
@@ -724,7 +743,7 @@ async function guardarSesion(){
   if(!ok){const b=$('#btnGuardar');if(b)b.disabled=false;return}
   {const H2=[{id,fecha:f,prs,detalle,series,volumen:Math.round(vol)},...S.hist.filter(h=>h.id!==id)];S.db.doc(BASE()).update({tend:tendencias(H2)}).catch(e=>console.warn('tend',e));actualizarRetos(H2)}
   cerrarHoja();S.ses=null;guardarSes();try{wake?.release()}catch(e){}wake=null;S.vista=null;S.tab='hoy';render();scrollTo(0,0);
-  toast(prs.length?`¡Guardado! ${prs.length} récord${prs.length>1?'s':''} nuevo${prs.length>1?'s':''}: ${prs.join(', ')}`:'¡Entrenamiento guardado! Tu coach ya lo puede ver.')}
+  toast(prs.length?`¡Guardado! ${prs.length} récord${prs.length>1?'s':''} nuevo${prs.length>1?'s':''}: ${prs.join(', ')}`:'¡Entrenamiento guardado! Génesis ya lo puede ver.')}
 
 /* ================= Biblioteca y ficha ================= */
 function libHead(id){return `<input class="input" id="${id}" placeholder="Buscar ejercicio${S.pick?' o escribir uno nuevo':''}" value="${esc(S.libQ)}" oninput="S.libQ=this.value;listaLib(this.dataset.l)" data-l="${id==='q2'?'libres2':'libres'}" autocomplete="off">
@@ -810,8 +829,8 @@ function progCuerpo(){
   let h=`<div class="grid3"><div class="tile"><span class="tiny">Peso</span><span class="big">${peso!=null?fmt(peso):'—'}</span><span class="tiny">kg</span></div><div class="tile"><span class="tiny">Medidas</span><span class="big">${M.length}</span><span class="tiny">registros</span></div><div class="tile"><span class="tiny">Fotos</span><span class="big">${S.fotos.length}</span></div></div>`;
   h+=ajusteHuella();
   if(S.perfil?.sexo)h+=`<section class="card"><b>Color de la app</b>${sexoChips(S.perfil.sexo,'elegirSexo')}</section>`;
-  h+=`<section class="card"><div class="row between"><b>Compartir mi progreso con mi coach</b><button class="switch" role="switch" aria-checked="${!!S.perfil?.compartir}" aria-label="Compartir medidas y fotos con mi coach" onclick="toggleCompartir(this)"><i></i></button></div>
-   <span class="small">${S.perfil?.compartir?'Tu coach ve tus medidas y fotos de progreso.':'Tus medidas y fotos son solo tuyas. Tu coach ve tus entrenamientos y récords.'}</span></section>`;
+  h+=`<section class="card"><div class="row between"><b>Compartir mi progreso con Génesis</b><button class="switch" role="switch" aria-checked="${!!S.perfil?.compartir}" aria-label="Compartir medidas y fotos con Génesis" onclick="toggleCompartir(this)"><i></i></button></div>
+   <span class="small">${S.perfil?.compartir?'Génesis ve tus medidas y fotos de progreso.':'Tus medidas y fotos son solo tuyas. Génesis ve tus entrenamientos y récords.'}</span></section>`;
   h+=`<section class="card">${lineaPeso(M)||'<b>Medidas</b>'}
    ${ult?`<div class="grid3">${MED.map(([k,l,u])=>{const v=ult[k];if(v==null)return`<div><div class="tiny">${l}</div><div class="small">—</div></div>`;const first=M.find(m=>m[k]!=null)[k],d=Math.round((v-first)*10)/10;
      return `<div><div class="tiny">${l}</div><div class="big" style="font-size:20px">${fmt(v)} <span class="u">${u}</span></div>${M.length>1&&d?`<div class="tiny num">${d>0?'+':''}${fmt(d)} ${u}</div>`:''}</div>`}).join('')}</div>`:'<span class="small">Registra tu peso y medidas para ver tu evolución.</span>'}
@@ -820,7 +839,7 @@ function progCuerpo(){
    <button class="btn primary block">Guardar medidas</button></form></details></section>`;
   const F=S.fotos.filter(f=>f.pose===S.pose).sort((a,b)=>a.fecha-b.fecha);
   if(!F.find(f=>f.id===S.cmpA))S.cmpA=F[0]?.id||null;if(!F.find(f=>f.id===S.cmpB))S.cmpB=F.length>1?F.at(-1).id:null;
-  h+=`<section class="card"><div class="row between"><b>Antes y después</b><span class="small">${S.perfil?.compartir?'Compartidas con tu coach':'Solo tú las ves'}</span></div>
+  h+=`<section class="card"><div class="row between"><b>Antes y después</b><span class="small">${S.perfil?.compartir?'Compartidas con Génesis':'Solo tú las ves'}</span></div>
    <div class="chips" role="group" aria-label="Pose">${['Frente','Lado','Espalda'].map(p=>`<button class="chip" aria-pressed="${p===S.pose}" onclick="S.pose='${p}';render()">${p}</button>`).join('')}</div>
    <label class="btn primary block" for="foto-in">${IC.cam} Agregar foto de ${S.pose.toLowerCase()}</label><input id="foto-in" type="file" accept="image/*" hidden onchange="subirFoto(this)">
    `;
@@ -860,7 +879,7 @@ async function toggleCompartir(b){if(b.disabled)return;b.disabled=true;const on=
     await S.db.doc(BASE()).update({compartir:on});
     if(on){for(const m of S.med){const{id,...d}=m;await S.db.doc(BASE()+'/medidas/'+id).set(d)}for(const f of S.fotos){const{id,...d}=f;await S.db.doc(BASE()+'/fotos/'+id).set(d)}}
     else for(const c of ['medidas','fotos']){const q=await S.db.collection(BASE()+'/'+c).get();for(const d of q.docs)await S.db.doc(BASE()+'/'+c+'/'+d.id).delete()}
-  },on?'Tu coach ya puede ver tu progreso':'Dejaste de compartir medidas y fotos');b.disabled=false}
+  },on?'Génesis ya puede ver tu progreso':'Dejaste de compartir medidas y fotos');b.disabled=false}
 
 /* ================= Estadísticas ================= */
 /* 1RM estimado (fórmula de Epley). Los calentamientos nunca cuentan. */
@@ -950,7 +969,7 @@ function vEjercicio(){const n=S.ejSel,P=sesionesDe(histEj(),n),k=S.ejVar||'rm';
 const colones=n=>'₡'+Math.round(+n||0).toLocaleString('es-CR');
 const telFmt=t=>String(t||'').replace(/\D/g,'').replace(/^(\d{4})(\d{4})$/,'$1-$2');
 function copiar(txt,msg){const ok=()=>toast(msg||'Copiado');try{navigator.clipboard.writeText(String(txt)).then(ok,()=>toast(String(txt)))}catch(e){toast(String(txt))}}
-function tarjetaSinpe(){const c=S.coachCfg||{};if(!c.sinpe||S.esOwner)return'';const ult=S.comp?.[0],nom=S.coachNombre||'tu coach';
+function tarjetaSinpe(){const c=S.coachCfg||{};if(!c.sinpe||S.esOwner)return'';const ult=S.comp?.[0],nom=S.coachNombre||'Génesis';
   const est=ult&&Date.now()-ult.fecha<40*DIA?ult.estado:null;
   return `<section class="card line" style="border-color:var(--ok-line)"><div class="row between"><b>Paga tu mensualidad por SINPE</b>${S.acceso?.pagoHasta?`<span class="small">hasta el ${fecha(S.acceso.pagoHasta)}</span>`:''}</div>
    <div class="grid2"><button class="tile" style="border:0;text-align:left;color:var(--fg);background:var(--raise)" onclick="copiar(${J(String(c.sinpe).replace(/\D/g,''))},'Número copiado')"><span class="tiny">SINPE Móvil · toca para copiar</span><span class="big" style="font-size:22px">${esc(telFmt(c.sinpe))}</span><span class="tiny">${esc(c.titular||nom)}</span></button>
@@ -1001,7 +1020,7 @@ const zonasTxt=z=>Object.entries(z).sort((a,b)=>b[1]-a[1]).map(([m,v])=>`${m} ($
 function tarjetaDolor(){const d=dolorDe(S.perfil);
   if(!d)return `<button class="btn ghost block" onclick="abrirDolor()">¿Te duele algo? Márcalo en el mapa</button>`;
   return `<section class="card line" style="border-color:var(--warn)"><div class="row between"><b>Te duele</b><span class="small">${hace(d.fecha)}</span></div><span class="small" style="color:var(--fg)">${esc(zonasTxt(d.z))}</span>${d.nota?`<span class="small">«${esc(d.nota)}»</span>`:''}
-   <span class="small">En tus entrenos marcamos los ejercicios que cargan esa zona y te damos alternativas. Tu coach también lo ve.</span><button class="btn sm ghost" style="align-self:flex-start" onclick="abrirDolor()">Actualizar</button></section>`}
+   <span class="small">En tus entrenos marcamos los ejercicios que cargan esa zona y te damos alternativas. Génesis también lo ve.</span><button class="btn sm ghost" style="align-self:flex-start" onclick="abrirDolor()">Actualizar</button></section>`}
 function abrirDolor(){S.dolorDraft={...zonasDolor()};S.dolorNota=dolorDe(S.perfil)?.nota||'';S.vista='dolor';render();scrollTo(0,0)}
 function tocarZona(m){const z=S.dolorDraft;z[m]=((z[m]||0)+1)%4;if(!z[m])delete z[m];const y=scrollY;render();scrollTo(0,y)}
 function vDolor(){const z=S.dolorDraft||{};
@@ -1017,7 +1036,7 @@ async function guardarDolor(){const z=S.dolorDraft||{},nota=(S.dolorNota||'').tr
   if(await escribir(()=>S.db.doc(BASE()).update({dolor:{z,nota,fecha:Date.now()}}),Object.keys(z).length?'Guardado. Te marcamos los ejercicios con cuidado.':'¡Qué bien! Quitamos los avisos.')){S.vista=null;render()}}
 function verAlternativas(i){const e=S.ses.ejercicios[i],z=zonasDolor(),A=alternativas(e.nombre,z);
   abrirHoja(`<div class="row between"><h2>En vez de ${esc(e.nombre)}</h2><button class="iconbtn" onclick="cerrarHoja()" aria-label="Cerrar">${IC.x}</button></div>
-   <div class="body"><span class="small">Del mismo grupo y sin cargar ${esc(enRiesgo(e.nombre,z).join(', '))}.</span>${A.length?A.map(x=>`<div class="row" style="gap:6px"><button class="pick grow" onclick="cambiarPorAlternativa(${i},${J(x)})">${mini(x,'mini s44')}<span class="grow"><b style="display:block">${esc(x)}</b><span class="small">${esc(EJ[x].eq)} · ${esc(EJ[x].mus.join(', '))}</span></span></button><button class="iconbtn" onclick="abrirFicha(${J(x)})" aria-label="Cómo se hace ${esc(x)}">${IC.info}</button></div>`).join(''):'<div class="empty">No encontramos una alternativa segura. Pregúntale a tu coach o salta este ejercicio.</div>'}</div>`)}
+   <div class="body"><span class="small">Del mismo grupo y sin cargar ${esc(enRiesgo(e.nombre,z).join(', '))}.</span>${A.length?A.map(x=>`<div class="row" style="gap:6px"><button class="pick grow" onclick="cambiarPorAlternativa(${i},${J(x)})">${mini(x,'mini s44')}<span class="grow"><b style="display:block">${esc(x)}</b><span class="small">${esc(EJ[x].eq)} · ${esc(EJ[x].mus.join(', '))}</span></span></button><button class="iconbtn" onclick="abrirFicha(${J(x)})" aria-label="Cómo se hace ${esc(x)}">${IC.info}</button></div>`).join(''):'<div class="empty">No encontramos una alternativa segura. Pregúntale a Génesis o salta este ejercicio.</div>'}</div>`)}
 function cambiarPorAlternativa(i,x){const e=S.ses.ejercicios[i];e.nombre=x;e.sug=null;guardarSes();cerrarHoja();render();toast('Cambiado por '+x)}
 
 /* ================= Progresión automática ================= */
@@ -1143,8 +1162,8 @@ async function enviarMsg(ev,cid){ev.preventDefault();const i=$('#msgIn'),t=i.val
   const ok=await escribir(async()=>{await S.db.collection('clientes/'+cid+'/mensajes').doc('m'+uid()).set(m);await S.db.doc('clientes/'+cid).update({ultMsg:m})});
   if(!ok){i.value=t;BORR[cid]=t}else{marcarVisto(cid);i.blur()}}
 function vCoach(){
-  marcarVisto(S.me);const nom=S.coachNombre||'Tu coach';
-  return `<div class="stack" style="padding-top:12px"><div class="row">${avatar(nom,'avatar lg')}<div class="grow"><span class="small">Tu coach</span><h1 style="font-size:26px">${esc(nom)}</h1></div></div>
+  marcarVisto(S.me);const nom=S.coachNombre||'Génesis';
+  return `<div class="stack" style="padding-top:12px"><div class="row">${fotoCoach(64)}<div class="grow"><span class="small">Tu entrenadora · ${ENTRENA.titulo}</span><h1 style="font-size:26px">${esc(S.coachNombre||ENTRENA.nombre)}</h1></div></div>
    ${S.asig.length?`<section class="card"><b>Rutinas que te asignó</b>${S.asig.map(a=>`<div class="list-row"><div class="grow"><b>${esc(a.nombre)}</b><div class="small">${(a.ejercicios||[]).length} ejercicios${a.dias?.length?' · '+a.dias.map(d=>NOMDIA[d]).join(', '):''}</div></div>${S.ses?'':`<button class="btn sm primary" onclick="iniciar('asig',${J(a.id)})">Empezar</button>`}</div>`).join('')}</section>`:''}
    ${tarjetaSinpe()}${tarjetaRetos()}
    <section class="card"><b>Mensajes</b>${hiloHTML(S.msgs)}${cajaMsg(S.me)}</section></div>`}
@@ -1249,7 +1268,7 @@ function pillPago(cid){if(cid===S.me)return'';const p=pago(accesoDe(cid));return
 function restringido(){const a=S.acceso;if(S.esOwner||!a)return null;
   if(a.bloqueado)return a.eliminado?'eliminado':'suspendido';
   if(a.pagoHasta&&a.pagoHasta<Date.now())return'vencido';return null}
-function vBloqueado(){const r=restringido(),a=S.acceso||{},nom=S.coachNombre||'tu coach';
+function vBloqueado(){const r=restringido(),a=S.acceso||{},nom=S.coachNombre||'Génesis';
   const tit={vencido:'Tu mensualidad venció',suspendido:'Tu acceso está en pausa',eliminado:'Tu cuenta está desactivada'}[r];
   const txt={vencido:`Tu plan estaba pagado hasta el ${fechaLarga(a.pagoHasta)}. En cuanto ${esc(nom)} registre tu pago, vuelves a ver tus rutinas y tu progreso.`,
     suspendido:`${esc(nom)} pausó tu acceso a Genefit. Escríbele para reactivarlo.`,
