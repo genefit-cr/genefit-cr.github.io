@@ -42,14 +42,20 @@ Todo esto está escrito en [`firestore.rules`](firestore.rules) y probado en [`p
 En **Authentication → Configuración**:
 - **Política de contraseñas**: mínimo 8 caracteres.
 - **Protección contra la enumeración de correos**: activada (evita que alguien averigüe qué correos tienen cuenta).
-- **Dominios autorizados**: deja solo `genefit-cr.github.io` y `localhost`. Borra cualquier otro.
+- **Dominios autorizados**: deja `genefit-cr.github.io`, `localhost`, `genefit-1a52a.firebaseapp.com` y `genefit-1a52a.web.app`. Borra cualquier otro.
+  Los dos de Firebase son necesarios: ahí se abre la página de los correos para cambiar la clave.
 
 ### 3. Limitar la clave de la web
 La `apiKey` que está en `index.html` es pública por diseño en todas las apps de Firebase:
 lo que protege los datos son las reglas. Aun así, conviene limitarla:
 1. <https://console.cloud.google.com/apis/credentials> → proyecto **genefit-1a52a**.
 2. Abre la clave **Browser key** → **Restricciones de aplicación → Sitios web**.
-3. Agrega `https://genefit-cr.github.io/*` y guarda.
+3. Agrega estos tres y guarda:
+   - `https://genefit-cr.github.io/*`
+   - `https://genefit-1a52a.firebaseapp.com/*`
+   - `https://genefit-1a52a.web.app/*`
+
+   Sin los dos de Firebase, el enlace del correo para cambiar la clave no funciona.
 
 ### 4. Alerta de gastos
 En **Configuración del proyecto → Uso y facturación**, crea una alerta de presupuesto para enterarte
